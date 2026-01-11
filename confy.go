@@ -943,10 +943,6 @@ func (c *ConfyImpl) GetDurationWithOptions(key string, opts ...configcore.GetOpt
 	return result, nil
 }
 
-// =============================================================================
-// LIFECYCLE METHODS (continuing from previous implementation)
-// =============================================================================
-
 // LoadFrom loads configuration from multiple sources.
 func (c *ConfyImpl) LoadFrom(sources ...ConfigSource) error {
 	c.mu.Lock()
