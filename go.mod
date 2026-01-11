@@ -7,8 +7,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/hashicorp/consul/api v1.33.0
 	github.com/json-iterator/go v1.1.12
-	github.com/xraph/forge v0.8.6
-	github.com/xraph/go-utils v0.0.4
+	github.com/xraph/go-utils v0.0.5
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.35.0
 	k8s.io/apimachinery v0.35.0
