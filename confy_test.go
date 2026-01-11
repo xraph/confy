@@ -10,44 +10,44 @@ import (
 )
 
 // =============================================================================
-// MANAGER CREATION TESTS
+// CONFY CREATION TESTS
 // =============================================================================
 
-func TestNewManager(t *testing.T) {
+func TestNew(t *testing.T) {
 	tests := []struct {
 		name   string
-		config ManagerConfig
+		config Config
 		want   string
 	}{
 		{
 			name:   "default config",
-			config: ManagerConfig{},
-			want:   ManagerKey,
+			config: Config{},
+			want:   "confy",
 		},
 		{
 			name: "custom config",
-			config: ManagerConfig{
+			config: Config{
 				WatchInterval:   60 * time.Second,
 				ErrorRetryCount: 5,
 				SecretsEnabled:  true,
 			},
-			want: ManagerKey,
+			want: "confy",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			manager := NewManager(tt.config)
-			if manager == nil {
-				t.Fatal("NewManager() returned nil")
+			confy := New(tt.config)
+			if confy == nil {
+				t.Fatal("New() returned nil")
 			}
 
-			if name := manager.Name(); name != tt.want {
+			if name := confy.Name(); name != tt.want {
 				t.Errorf("Name() = %v, want %v", name, tt.want)
 			}
 
 			// Verify default values are set
-			if m, ok := manager.(*Manager); ok {
+			if m, ok := confy.(*ConfyImpl); ok {
 				if m.data == nil {
 					t.Error("data map not initialized")
 				}
@@ -68,11 +68,11 @@ func TestNewManager(t *testing.T) {
 // BASIC GETTER TESTS
 // =============================================================================
 
-func TestManager_Get(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_Get(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
 	// Set some test data
-	manager.data = map[string]any{
+	confy.data = map[string]any{
 		"string": "value",
 		"int":    42,
 		"bool":   true,
@@ -97,7 +97,7 @@ func TestManager_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.Get(tt.key)
+			got := confy.Get(tt.key)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Get(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -105,9 +105,9 @@ func TestManager_Get(t *testing.T) {
 	}
 }
 
-func TestManager_GetString(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetString(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"string": "value",
 		"int":    42,
 		"empty":  "",
@@ -128,7 +128,7 @@ func TestManager_GetString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.GetString(tt.key, tt.defaultValue...)
+			got := confy.GetString(tt.key, tt.defaultValue...)
 			if got != tt.want {
 				t.Errorf("GetString(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -136,9 +136,9 @@ func TestManager_GetString(t *testing.T) {
 	}
 }
 
-func TestManager_GetInt(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetInt(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"int":     42,
 		"int8":    int8(10),
 		"int16":   int16(100),
@@ -167,7 +167,7 @@ func TestManager_GetInt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.GetInt(tt.key, tt.defaultValue...)
+			got := confy.GetInt(tt.key, tt.defaultValue...)
 			if got != tt.want {
 				t.Errorf("GetInt(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -175,9 +175,9 @@ func TestManager_GetInt(t *testing.T) {
 	}
 }
 
-func TestManager_GetBool(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetBool(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"bool_true":    true,
 		"bool_false":   false,
 		"string_true":  "true",
@@ -204,7 +204,7 @@ func TestManager_GetBool(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.GetBool(tt.key, tt.defaultValue...)
+			got := confy.GetBool(tt.key, tt.defaultValue...)
 			if got != tt.want {
 				t.Errorf("GetBool(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -212,9 +212,9 @@ func TestManager_GetBool(t *testing.T) {
 	}
 }
 
-func TestManager_GetDuration(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetDuration(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"duration": 5 * time.Second,
 		"string":   "10s",
 		"int":      30,
@@ -235,7 +235,7 @@ func TestManager_GetDuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.GetDuration(tt.key, tt.defaultValue...)
+			got := confy.GetDuration(tt.key, tt.defaultValue...)
 			if got != tt.want {
 				t.Errorf("GetDuration(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -243,9 +243,9 @@ func TestManager_GetDuration(t *testing.T) {
 	}
 }
 
-func TestManager_GetStringSlice(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetStringSlice(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"slice":     []string{"a", "b", "c"},
 		"interface": []any{"x", "y", "z"},
 		"comma":     "one,two,three",
@@ -266,7 +266,7 @@ func TestManager_GetStringSlice(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.GetStringSlice(tt.key, tt.defaultValue...)
+			got := confy.GetStringSlice(tt.key, tt.defaultValue...)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetStringSlice(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -274,9 +274,9 @@ func TestManager_GetStringSlice(t *testing.T) {
 	}
 }
 
-func TestManager_GetStringMap(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetStringMap(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"map_string":    map[string]string{"key": "value"},
 		"map_interface": map[string]any{"foo": "bar"},
 	}
@@ -295,7 +295,7 @@ func TestManager_GetStringMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.GetStringMap(tt.key, tt.defaultValue...)
+			got := confy.GetStringMap(tt.key, tt.defaultValue...)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetStringMap(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -303,9 +303,9 @@ func TestManager_GetStringMap(t *testing.T) {
 	}
 }
 
-func TestManager_GetSizeInBytes(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetSizeInBytes(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"int":       1024,
 		"uint":      uint64(2048),
 		"string_kb": "10KB",
@@ -330,7 +330,7 @@ func TestManager_GetSizeInBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.GetSizeInBytes(tt.key, tt.defaultValue...)
+			got := confy.GetSizeInBytes(tt.key, tt.defaultValue...)
 			if got != tt.want {
 				t.Errorf("GetSizeInBytes(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -342,15 +342,15 @@ func TestManager_GetSizeInBytes(t *testing.T) {
 // ADVANCED GET WITH OPTIONS TESTS
 // =============================================================================
 
-func TestManager_GetWithOptions(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetWithOptions(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"value": "test",
 		"empty": "",
 	}
 
 	t.Run("required key exists", func(t *testing.T) {
-		val, err := manager.GetWithOptions("value", WithRequired())
+		val, err := confy.GetWithOptions("value", WithRequired())
 		if err != nil {
 			t.Errorf("GetWithOptions() error = %v, want nil", err)
 		}
@@ -361,14 +361,14 @@ func TestManager_GetWithOptions(t *testing.T) {
 	})
 
 	t.Run("required key missing", func(t *testing.T) {
-		_, err := manager.GetWithOptions("missing", WithRequired())
+		_, err := confy.GetWithOptions("missing", WithRequired())
 		if err == nil {
 			t.Error("GetWithOptions() expected error for required missing key")
 		}
 	})
 
 	t.Run("with default", func(t *testing.T) {
-		val, err := manager.GetWithOptions("missing", WithDefault("default"))
+		val, err := confy.GetWithOptions("missing", WithDefault("default"))
 		if err != nil {
 			t.Errorf("GetWithOptions() error = %v, want nil", err)
 		}
@@ -383,7 +383,7 @@ func TestManager_GetWithOptions(t *testing.T) {
 			return "transformed"
 		}
 
-		val, err := manager.GetWithOptions("value", WithTransform(transform))
+		val, err := confy.GetWithOptions("value", WithTransform(transform))
 		if err != nil {
 			t.Errorf("GetWithOptions() error = %v, want nil", err)
 		}
@@ -403,13 +403,13 @@ func TestManager_GetWithOptions(t *testing.T) {
 		}
 
 		// Valid case
-		_, err := manager.GetWithOptions("value", WithValidator(validator))
+		_, err := confy.GetWithOptions("value", WithValidator(validator))
 		if err != nil {
 			t.Errorf("GetWithOptions() error = %v, want nil", err)
 		}
 
 		// Invalid case
-		_, err = manager.GetWithOptions("empty", WithValidator(validator))
+		_, err = confy.GetWithOptions("empty", WithValidator(validator))
 		if err == nil {
 			t.Error("GetWithOptions() expected validation error")
 		}
@@ -420,7 +420,7 @@ func TestManager_GetWithOptions(t *testing.T) {
 			return "callback_value"
 		}
 
-		val, err := manager.GetWithOptions("missing", WithOnMissing(onMissing))
+		val, err := confy.GetWithOptions("missing", WithOnMissing(onMissing))
 		if err != nil {
 			t.Errorf("GetWithOptions() error = %v, want nil", err)
 		}
@@ -431,15 +431,15 @@ func TestManager_GetWithOptions(t *testing.T) {
 	})
 }
 
-func TestManager_GetStringWithOptions(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetStringWithOptions(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"value": "test",
 		"empty": "",
 	}
 
 	t.Run("allow empty", func(t *testing.T) {
-		val, err := manager.GetStringWithOptions("empty", AllowEmpty())
+		val, err := confy.GetStringWithOptions("empty", AllowEmpty())
 		if err != nil {
 			t.Errorf("GetStringWithOptions() error = %v, want nil", err)
 		}
@@ -450,7 +450,7 @@ func TestManager_GetStringWithOptions(t *testing.T) {
 	})
 
 	t.Run("disallow empty with default", func(t *testing.T) {
-		val, err := manager.GetStringWithOptions("empty", WithDefault("fallback"))
+		val, err := confy.GetStringWithOptions("empty", WithDefault("fallback"))
 		if err != nil {
 			t.Errorf("GetStringWithOptions() error = %v, want nil", err)
 		}
@@ -465,8 +465,8 @@ func TestManager_GetStringWithOptions(t *testing.T) {
 // SET AND MODIFICATION TESTS
 // =============================================================================
 
-func TestManager_Set(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_Set(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
 	tests := []struct {
 		name  string
@@ -481,9 +481,9 @@ func TestManager_Set(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			manager.Set(tt.key, tt.value)
+			confy.Set(tt.key, tt.value)
 
-			got := manager.Get(tt.key)
+			got := confy.Get(tt.key)
 			if !reflect.DeepEqual(got, tt.value) {
 				t.Errorf("After Set(), Get(%q) = %v, want %v", tt.key, got, tt.value)
 			}
@@ -491,27 +491,27 @@ func TestManager_Set(t *testing.T) {
 	}
 }
 
-func TestManager_Reset(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_Reset(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
 	// Add some data
-	manager.data["key"] = "value"
-	manager.watchCallbacks["key"] = []func(string, any){}
+	confy.data["key"] = "value"
+	confy.watchCallbacks["key"] = []func(string, any){}
 
 	// Reset
-	manager.Reset()
+	confy.Reset()
 
 	// Verify reset
-	if len(manager.data) != 0 {
-		t.Errorf("After Reset(), data length = %v, want 0", len(manager.data))
+	if len(confy.data) != 0 {
+		t.Errorf("After Reset(), data length = %v, want 0", len(confy.data))
 	}
 
-	if len(manager.watchCallbacks) != 0 {
-		t.Errorf("After Reset(), watchCallbacks length = %v, want 0", len(manager.watchCallbacks))
+	if len(confy.watchCallbacks) != 0 {
+		t.Errorf("After Reset(), watchCallbacks length = %v, want 0", len(confy.watchCallbacks))
 	}
 
-	if len(manager.changeCallbacks) != 0 {
-		t.Errorf("After Reset(), changeCallbacks length = %v, want 0", len(manager.changeCallbacks))
+	if len(confy.changeCallbacks) != 0 {
+		t.Errorf("After Reset(), changeCallbacks length = %v, want 0", len(confy.changeCallbacks))
 	}
 }
 
@@ -519,16 +519,16 @@ func TestManager_Reset(t *testing.T) {
 // INTROSPECTION TESTS
 // =============================================================================
 
-func TestManager_GetKeys(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetKeys(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"key1": "value1",
 		"key2": map[string]any{
 			"nested": "value2",
 		},
 	}
 
-	keys := manager.GetKeys()
+	keys := confy.GetKeys()
 
 	// Should include both top-level and nested keys
 	expectedKeys := map[string]bool{
@@ -550,9 +550,9 @@ func TestManager_GetKeys(t *testing.T) {
 	}
 }
 
-func TestManager_HasKey(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_HasKey(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"key1": "value1",
 		"nested": map[string]any{
 			"key2": "value2",
@@ -572,7 +572,7 @@ func TestManager_HasKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.HasKey(tt.key)
+			got := confy.HasKey(tt.key)
 			if got != tt.want {
 				t.Errorf("HasKey(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -580,9 +580,9 @@ func TestManager_HasKey(t *testing.T) {
 	}
 }
 
-func TestManager_IsSet(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_IsSet(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"string":       "value",
 		"empty_string": "",
 		"slice":        []any{"a", "b"},
@@ -607,7 +607,7 @@ func TestManager_IsSet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.IsSet(tt.key)
+			got := confy.IsSet(tt.key)
 			if got != tt.want {
 				t.Errorf("IsSet(%q) = %v, want %v", tt.key, got, tt.want)
 			}
@@ -615,29 +615,29 @@ func TestManager_IsSet(t *testing.T) {
 	}
 }
 
-func TestManager_Size(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_Size(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
-	if size := manager.Size(); size != 0 {
-		t.Errorf("Empty manager Size() = %v, want 0", size)
+	if size := confy.Size(); size != 0 {
+		t.Errorf("Empty confy Size() = %v, want 0", size)
 	}
 
-	manager.data = map[string]any{
+	confy.data = map[string]any{
 		"key1": "value1",
 		"key2": map[string]any{
 			"nested": "value2",
 		},
 	}
 
-	size := manager.Size()
+	size := confy.Size()
 	if size == 0 {
 		t.Error("Size() = 0, want > 0")
 	}
 }
 
-func TestManager_GetSection(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_GetSection(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"section": map[string]any{
 			"key1": "value1",
 			"key2": "value2",
@@ -658,7 +658,7 @@ func TestManager_GetSection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := manager.GetSection(tt.key)
+			got := confy.GetSection(tt.key)
 			if tt.wantNil {
 				if got != nil {
 					t.Errorf("GetSection(%q) = %v, want nil", tt.key, got)
@@ -678,46 +678,46 @@ func TestManager_GetSection(t *testing.T) {
 // STRUCTURE OPERATIONS TESTS
 // =============================================================================
 
-func TestManager_Sub(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_Sub(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"section": map[string]any{
 			"key1": "value1",
 			"key2": "value2",
 		},
 	}
 
-	sub := manager.Sub("section")
+	sub := confy.Sub("section")
 	if sub == nil {
 		t.Fatal("Sub() returned nil")
 	}
 
-	// Test that sub-manager can access values
+	// Test that sub-confy can access values
 	if val := sub.GetString("key1"); val != "value1" {
 		t.Errorf("Sub().GetString(\"key1\") = %v, want %v", val, "value1")
 	}
 
 	// Test with non-existent section
-	emptySub := manager.Sub("nonexistent")
+	emptySub := confy.Sub("nonexistent")
 	if emptySub == nil {
 		t.Fatal("Sub() with non-existent key returned nil")
 	}
 
 	if size := emptySub.Size(); size != 0 {
-		t.Errorf("Empty sub-manager Size() = %v, want 0", size)
+		t.Errorf("Empty sub-confy Size() = %v, want 0", size)
 	}
 }
 
-func TestManager_Clone(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_Clone(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"key1": "value1",
 		"nested": map[string]any{
 			"key2": "value2",
 		},
 	}
 
-	clone := manager.Clone()
+	clone := confy.Clone()
 	if clone == nil {
 		t.Fatal("Clone() returned nil")
 	}
@@ -730,20 +730,20 @@ func TestManager_Clone(t *testing.T) {
 	// Verify modifications to clone don't affect original
 	clone.Set("key1", "modified")
 
-	if orig := manager.GetString("key1"); orig != "value1" {
+	if orig := confy.GetString("key1"); orig != "value1" {
 		t.Errorf("Original modified after clone Set(), got %v, want %v", orig, "value1")
 	}
 }
 
-func TestManager_GetAllSettings(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_GetAllSettings(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 	testData := map[string]any{
 		"key1": "value1",
 		"key2": 42,
 	}
-	manager.data = testData
+	confy.data = testData
 
-	allSettings := manager.GetAllSettings()
+	allSettings := confy.GetAllSettings()
 	if allSettings == nil {
 		t.Fatal("GetAllSettings() returned nil")
 	}
@@ -755,7 +755,7 @@ func TestManager_GetAllSettings(t *testing.T) {
 	// Verify returned map is a copy
 	allSettings["key1"] = "modified"
 
-	if orig := manager.GetString("key1"); orig != "value1" {
+	if orig := confy.GetString("key1"); orig != "value1" {
 		t.Error("GetAllSettings() returned non-copied map")
 	}
 }
@@ -779,9 +779,9 @@ type TestNestedConfig struct {
 	Value int    `yaml:"value"`
 }
 
-func TestManager_Bind(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_Bind(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"string": "test",
 		"int":    42,
 		"bool":   true,
@@ -798,7 +798,7 @@ func TestManager_Bind(t *testing.T) {
 
 	var config TestConfig
 
-	err := manager.Bind("", &config)
+	err := confy.Bind("", &config)
 	if err != nil {
 		t.Fatalf("Bind() error = %v", err)
 	}
@@ -821,9 +821,9 @@ func TestManager_Bind(t *testing.T) {
 	}
 }
 
-func TestManager_Bind_WithKey(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_Bind_WithKey(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"section": map[string]any{
 			"key":   "value",
 			"value": 99,
@@ -832,7 +832,7 @@ func TestManager_Bind_WithKey(t *testing.T) {
 
 	var nested TestNestedConfig
 
-	err := manager.Bind("section", &nested)
+	err := confy.Bind("section", &nested)
 	if err != nil {
 		t.Fatalf("Bind() error = %v", err)
 	}
@@ -846,9 +846,9 @@ func TestManager_Bind_WithKey(t *testing.T) {
 	}
 }
 
-func TestManager_BindWithOptions(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_BindWithOptions(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"key": "value",
 	}
 
@@ -860,7 +860,7 @@ func TestManager_BindWithOptions(t *testing.T) {
 			"value": 50,
 		}
 
-		err := manager.BindWithOptions("nonexistent", &config, configcore.BindOptions{
+		err := confy.BindWithOptions("nonexistent", &config, configcore.BindOptions{
 			DefaultValue: defaultValue,
 			UseDefaults:  true,
 		})
@@ -876,7 +876,7 @@ func TestManager_BindWithOptions(t *testing.T) {
 	t.Run("error on missing", func(t *testing.T) {
 		var config TestConfig
 
-		err := manager.BindWithOptions("nonexistent", &config, configcore.BindOptions{
+		err := confy.BindWithOptions("nonexistent", &config, configcore.BindOptions{
 			ErrorOnMissing: true,
 		})
 		if err == nil {
@@ -914,9 +914,9 @@ type TestNestedDefaultConfig struct {
 	Active   bool                    `json:"active"   yaml:"active"`
 }
 
-func TestManager_BindWithDefault_StructValue(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{} // Empty config
+func TestConfy_BindWithDefault_StructValue(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{} // Empty config
 
 	t.Run("struct default with yaml tags", func(t *testing.T) {
 		var config TestStructDefaultConfig
@@ -930,7 +930,7 @@ func TestManager_BindWithDefault_StructValue(t *testing.T) {
 			InvitationExpiryHours:     72,
 		}
 
-		err := manager.BindWithDefault("nonexistent.key", &config, defaultStruct)
+		err := confy.BindWithDefault("nonexistent.key", &config, defaultStruct)
 		if err != nil {
 			t.Fatalf("BindWithDefault() error = %v", err)
 		}
@@ -970,7 +970,7 @@ func TestManager_BindWithDefault_StructValue(t *testing.T) {
 			Enabled:     true,
 		}
 
-		err := manager.BindWithDefault("another.nonexistent.key", &config, defaultStruct)
+		err := confy.BindWithDefault("another.nonexistent.key", &config, defaultStruct)
 		if err != nil {
 			t.Fatalf("BindWithDefault() error = %v", err)
 		}
@@ -1008,7 +1008,7 @@ func TestManager_BindWithDefault_StructValue(t *testing.T) {
 			Active: true,
 		}
 
-		err := manager.BindWithDefault("nested.config", &config, defaultStruct)
+		err := confy.BindWithDefault("nested.config", &config, defaultStruct)
 		if err != nil {
 			t.Fatalf("BindWithDefault() error = %v", err)
 		}
@@ -1042,7 +1042,7 @@ func TestManager_BindWithDefault_StructValue(t *testing.T) {
 			InvitationExpiryHours:     96,
 		}
 
-		err := manager.BindWithDefault("pointer.config", &config, defaultStruct)
+		err := confy.BindWithDefault("pointer.config", &config, defaultStruct)
 		if err != nil {
 			t.Fatalf("BindWithDefault() error = %v", err)
 		}
@@ -1058,7 +1058,7 @@ func TestManager_BindWithDefault_StructValue(t *testing.T) {
 
 	t.Run("config overrides struct default", func(t *testing.T) {
 		// Set actual config data
-		manager.data = map[string]any{
+		confy.data = map[string]any{
 			"override": map[string]any{
 				"maxOrganizationsPerUser":   999,
 				"maxMembersPerOrganization": 888,
@@ -1073,7 +1073,7 @@ func TestManager_BindWithDefault_StructValue(t *testing.T) {
 			MaxTeamsPerOrganization:   20,
 		}
 
-		err := manager.BindWithDefault("override", &config, defaultStruct)
+		err := confy.BindWithDefault("override", &config, defaultStruct)
 		if err != nil {
 			t.Fatalf("BindWithDefault() error = %v", err)
 		}
@@ -1092,20 +1092,20 @@ func TestManager_BindWithDefault_StructValue(t *testing.T) {
 		}
 
 		// Reset data
-		manager.data = map[string]any{}
+		confy.data = map[string]any{}
 	})
 }
 
-func TestManager_BindWithDefault_PrimitiveValue(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{} // Empty config
+func TestConfy_BindWithDefault_PrimitiveValue(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{} // Empty config
 
 	t.Run("int default", func(t *testing.T) {
 		var value int
 
 		defaultValue := 42
 
-		err := manager.BindWithDefault("nonexistent.int", &value, defaultValue)
+		err := confy.BindWithDefault("nonexistent.int", &value, defaultValue)
 		if err != nil {
 			t.Fatalf("BindWithDefault() error = %v", err)
 		}
@@ -1120,7 +1120,7 @@ func TestManager_BindWithDefault_PrimitiveValue(t *testing.T) {
 
 		defaultValue := "default string"
 
-		err := manager.BindWithDefault("nonexistent.string", &value, defaultValue)
+		err := confy.BindWithDefault("nonexistent.string", &value, defaultValue)
 		if err != nil {
 			t.Fatalf("BindWithDefault() error = %v", err)
 		}
@@ -1135,7 +1135,7 @@ func TestManager_BindWithDefault_PrimitiveValue(t *testing.T) {
 
 		defaultValue := true
 
-		err := manager.BindWithDefault("nonexistent.bool", &value, defaultValue)
+		err := confy.BindWithDefault("nonexistent.bool", &value, defaultValue)
 		if err != nil {
 			t.Fatalf("BindWithDefault() error = %v", err)
 		}
@@ -1150,7 +1150,7 @@ func TestManager_BindWithDefault_PrimitiveValue(t *testing.T) {
 
 		defaultValue := 3.14
 
-		err := manager.BindWithDefault("nonexistent.float", &value, defaultValue)
+		err := confy.BindWithDefault("nonexistent.float", &value, defaultValue)
 		if err != nil {
 			t.Fatalf("BindWithDefault() error = %v", err)
 		}
@@ -1161,8 +1161,8 @@ func TestManager_BindWithDefault_PrimitiveValue(t *testing.T) {
 	})
 }
 
-func TestManager_structToMap(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_structToMap(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
 	t.Run("yaml tags precedence over json", func(t *testing.T) {
 		type TestBothTags struct {
@@ -1175,7 +1175,7 @@ func TestManager_structToMap(t *testing.T) {
 			Field2: 123,
 		}
 
-		result, err := manager.structToMap(input, "yaml")
+		result, err := confy.structToMap(input, "yaml")
 		if err != nil {
 			t.Fatalf("structToMap() error = %v", err)
 		}
@@ -1206,7 +1206,7 @@ func TestManager_structToMap(t *testing.T) {
 			Field2: 456,
 		}
 
-		result, err := manager.structToMap(input, "yaml")
+		result, err := confy.structToMap(input, "yaml")
 		if err != nil {
 			t.Fatalf("structToMap() error = %v", err)
 		}
@@ -1234,7 +1234,7 @@ func TestManager_structToMap(t *testing.T) {
 			Field3: 999,
 		}
 
-		result, err := manager.structToMap(input, "yaml")
+		result, err := confy.structToMap(input, "yaml")
 		if err != nil {
 			t.Fatalf("structToMap() error = %v", err)
 		}
@@ -1270,7 +1270,7 @@ func TestManager_structToMap(t *testing.T) {
 			},
 		}
 
-		result, err := manager.structToMap(input, "yaml")
+		result, err := confy.structToMap(input, "yaml")
 		if err != nil {
 			t.Fatalf("structToMap() error = %v", err)
 		}
@@ -1298,7 +1298,7 @@ func TestManager_structToMap(t *testing.T) {
 			Field: "pointer value",
 		}
 
-		result, err := manager.structToMap(input, "yaml")
+		result, err := confy.structToMap(input, "yaml")
 		if err != nil {
 			t.Fatalf("structToMap() error = %v", err)
 		}
@@ -1315,7 +1315,7 @@ func TestManager_structToMap(t *testing.T) {
 
 		var input *TestPointer = nil
 
-		_, err := manager.structToMap(input, "yaml")
+		_, err := confy.structToMap(input, "yaml")
 		if err == nil {
 			t.Error("structToMap() should return error for nil pointer")
 		}
@@ -1324,7 +1324,7 @@ func TestManager_structToMap(t *testing.T) {
 	t.Run("non-struct error", func(t *testing.T) {
 		input := "not a struct"
 
-		_, err := manager.structToMap(input, "yaml")
+		_, err := confy.structToMap(input, "yaml")
 		if err == nil {
 			t.Error("structToMap() should return error for non-struct input")
 		}
@@ -1335,9 +1335,9 @@ func TestManager_structToMap(t *testing.T) {
 // WATCH AND CALLBACK TESTS
 // =============================================================================
 
-func TestManager_WatchWithCallback(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_WatchWithCallback(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"key": "initial",
 	}
 
@@ -1350,7 +1350,7 @@ func TestManager_WatchWithCallback(t *testing.T) {
 		callbackValue any
 	)
 
-	manager.WatchWithCallback("key", func(key string, value any) {
+	confy.WatchWithCallback("key", func(key string, value any) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -1360,7 +1360,7 @@ func TestManager_WatchWithCallback(t *testing.T) {
 	})
 
 	// Change the value - should trigger callback via Set
-	manager.Set("key", "changed")
+	confy.Set("key", "changed")
 
 	// Give callback time to execute
 	time.Sleep(100 * time.Millisecond)
@@ -1386,8 +1386,8 @@ func TestManager_WatchWithCallback(t *testing.T) {
 	}
 }
 
-func TestManager_WatchChanges(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_WatchChanges(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
 	var mu sync.Mutex
 
@@ -1395,7 +1395,7 @@ func TestManager_WatchChanges(t *testing.T) {
 
 	var change ConfigChange
 
-	manager.WatchChanges(func(c ConfigChange) {
+	confy.WatchChanges(func(c ConfigChange) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -1403,7 +1403,7 @@ func TestManager_WatchChanges(t *testing.T) {
 		change = c
 	})
 
-	manager.Set("key", "value")
+	confy.Set("key", "value")
 
 	// Give callback time to execute
 	time.Sleep(100 * time.Millisecond)
@@ -1428,39 +1428,39 @@ func TestManager_WatchChanges(t *testing.T) {
 // LIFECYCLE TESTS
 // =============================================================================
 
-func TestManager_Validate(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_Validate(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"key": "value",
 	}
 
 	// With default validator, validation should pass
-	err := manager.Validate()
+	err := confy.Validate()
 	if err != nil {
 		t.Errorf("Validate() error = %v, want nil", err)
 	}
 }
 
-func TestManager_Reload(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_Reload(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
 	// Reload should not error even with no sources
-	err := manager.Reload()
+	err := confy.Reload()
 	if err != nil {
 		t.Errorf("Reload() error = %v, want nil", err)
 	}
 }
 
-func TestManager_Stop(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_Stop(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
-	err := manager.Stop()
+	err := confy.Stop()
 	if err != nil {
 		t.Errorf("Stop() error = %v, want nil", err)
 	}
 
 	// Should be idempotent
-	err = manager.Stop()
+	err = confy.Stop()
 	if err != nil {
 		t.Errorf("Second Stop() error = %v, want nil", err)
 	}
@@ -1470,30 +1470,30 @@ func TestManager_Stop(t *testing.T) {
 // COMPATIBILITY ALIAS TESTS
 // =============================================================================
 
-func TestManager_CompatibilityAliases(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
-	manager.data = map[string]any{
+func TestConfy_CompatibilityAliases(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
+	confy.data = map[string]any{
 		"key": "value",
 	}
 
 	// Test GetBytesSize
-	if size := manager.GetBytesSize("key"); size != 0 {
+	if size := confy.GetBytesSize("key"); size != 0 {
 		// OK - tested in GetSizeInBytes
 	}
 
 	// Test InConfig
-	if has := manager.InConfig("key"); !has {
+	if has := confy.InConfig("key"); !has {
 		t.Error("InConfig(\"key\") = false, want true")
 	}
 
 	// Test AllKeys
-	keys := manager.AllKeys()
+	keys := confy.AllKeys()
 	if len(keys) == 0 {
 		t.Error("AllKeys() returned empty slice")
 	}
 
 	// Test AllSettings
-	settings := manager.AllSettings()
+	settings := confy.AllSettings()
 	if settings == nil {
 		t.Error("AllSettings() returned nil")
 	}
@@ -1501,19 +1501,19 @@ func TestManager_CompatibilityAliases(t *testing.T) {
 	// Test UnmarshalKey
 	var value string
 
-	err := manager.UnmarshalKey("key", &value)
+	err := confy.UnmarshalKey("key", &value)
 	if err != nil {
 		t.Errorf("UnmarshalKey() error = %v", err)
 	}
 
 	// Test ConfigFileUsed
-	_ = manager.ConfigFileUsed()
+	_ = confy.ConfigFileUsed()
 
 	// Test SetConfigType
-	manager.SetConfigType("yaml")
+	confy.SetConfigType("yaml")
 
 	// Test SetConfigFile
-	err = manager.SetConfigFile("/path/to/config.yaml")
+	err = confy.SetConfigFile("/path/to/config.yaml")
 	if err != nil {
 		t.Errorf("SetConfigFile() error = %v", err)
 	}
@@ -1523,8 +1523,8 @@ func TestManager_CompatibilityAliases(t *testing.T) {
 // HELPER FUNCTION TESTS
 // =============================================================================
 
-func TestManager_ConversionHelpers(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_ConversionHelpers(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
 	t.Run("convertToString", func(t *testing.T) {
 		tests := []struct {
@@ -1538,14 +1538,14 @@ func TestManager_ConversionHelpers(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			got := manager.convertToString(tt.input)
+			got := confy.converter.ToString(tt.input)
 			if got != tt.want {
 				t.Errorf("convertToString(%v) = %v, want %v", tt.input, got, tt.want)
 			}
 		}
 	})
 
-	t.Run("parseSizeInBytes", func(t *testing.T) {
+	t.Run("ToSizeInBytes", func(t *testing.T) {
 		tests := []struct {
 			input string
 			want  uint64
@@ -1561,34 +1561,34 @@ func TestManager_ConversionHelpers(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			got := manager.parseSizeInBytes(tt.input)
+			got, _ := confy.converter.ToSizeInBytes(tt.input)
 			if got != tt.want {
-				t.Errorf("parseSizeInBytes(%q) = %v, want %v", tt.input, got, tt.want)
+				t.Errorf("ToSizeInBytes(%q) = %v, want %v", tt.input, got, tt.want)
 			}
 		}
 	})
 }
 
 // =============================================================================
-// SECRETS MANAGER INTEGRATION TESTS
+// SECRETS CONFY INTEGRATION TESTS
 // =============================================================================
 
-func TestManager_SecretsManager(t *testing.T) {
-	config := ManagerConfig{
+func TestConfy_SecretsManager(t *testing.T) {
+	config := Config{
 		SecretsEnabled: true,
 	}
-	manager := NewManager(config)
+	confy := New(config)
 
-	sm := manager.SecretsManager()
+	sm := confy.SecretsManager()
 	if sm == nil {
 		t.Error("SecretsManager() returned nil when secrets enabled")
 	}
 
 	// Test with secrets disabled
-	config2 := ManagerConfig{
+	config2 := Config{
 		SecretsEnabled: false,
 	}
-	manager2 := NewManager(config2)
+	manager2 := New(config2)
 
 	sm2 := manager2.SecretsManager()
 	if sm2 != nil {
@@ -1600,8 +1600,8 @@ func TestManager_SecretsManager(t *testing.T) {
 // CONCURRENCY TESTS
 // =============================================================================
 
-func TestManager_Concurrency(t *testing.T) {
-	manager := NewManager(ManagerConfig{}).(*Manager)
+func TestConfy_Concurrency(t *testing.T) {
+	confy := New(Config{}).(*ConfyImpl)
 
 	// Test concurrent reads and writes
 	done := make(chan bool)
@@ -1609,7 +1609,7 @@ func TestManager_Concurrency(t *testing.T) {
 	// Writer goroutines
 	for i := range 10 {
 		go func(val int) {
-			manager.Set("key", val)
+			confy.Set("key", val)
 
 			done <- true
 		}(i)
@@ -1618,7 +1618,7 @@ func TestManager_Concurrency(t *testing.T) {
 	// Reader goroutines
 	for range 10 {
 		go func() {
-			_ = manager.Get("key")
+			_ = confy.Get("key")
 
 			done <- true
 		}()

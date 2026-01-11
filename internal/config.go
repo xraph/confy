@@ -6,12 +6,8 @@ import (
 	"time"
 )
 
-// =============================================================================
-// CONFIGURATION MANAGEMENT
-// =============================================================================
-
-// ConfigManager defines the comprehensive interface for configuration management.
-type ConfigManager interface {
+// Confy defines the comprehensive interface for configuration management.
+type Confy interface {
 	// Lifecycle
 	Name() string
 	SecretsManager() SecretsManager
@@ -82,9 +78,9 @@ type ConfigManager interface {
 	Size() int
 
 	// Structure operations
-	Sub(key string) ConfigManager
-	MergeWith(other ConfigManager) error
-	Clone() ConfigManager
+	Sub(key string) Confy
+	MergeWith(other Confy) error
+	Clone() Confy
 	GetAllSettings() map[string]any
 
 	// Utility methods

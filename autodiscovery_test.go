@@ -50,7 +50,7 @@ logging:
 	cfg.AppName = "test-app"
 	cfg.Logger = logger.NewNoopLogger()
 
-	manager, result, err := DiscoverAndLoadConfigs(cfg)
+	confy, result, err := DiscoverAndLoadConfigs(cfg)
 	if err != nil {
 		t.Fatalf("Failed to discover configs: %v", err)
 	}
@@ -69,20 +69,20 @@ logging:
 	}
 
 	// Verify config values - local should override base
-	if host := manager.GetString("database.host"); host != "localhost" {
+	if host := confy.GetString("database.host"); host != "localhost" {
 		t.Errorf("Expected database.host to be 'localhost' (from local), got '%s'", host)
 	}
 
-	if name := manager.GetString("database.name"); name != "dev_db" {
+	if name := confy.GetString("database.name"); name != "dev_db" {
 		t.Errorf("Expected database.name to be 'dev_db' (from local), got '%s'", name)
 	}
 
-	if level := manager.GetString("logging.level"); level != "debug" {
+	if level := confy.GetString("logging.level"); level != "debug" {
 		t.Errorf("Expected logging.level to be 'debug' (from local), got '%s'", level)
 	}
 
 	// Verify base-only values are still present
-	if port := manager.GetInt("app.port"); port != 8080 {
+	if port := confy.GetInt("app.port"); port != 8080 {
 		t.Errorf("Expected app.port to be 8080 (from base), got %d", port)
 	}
 }
@@ -153,7 +153,7 @@ apps:
 	cfg.EnableAppScoping = true
 	cfg.Logger = logger.NewNoopLogger()
 
-	manager, result, err := DiscoverAndLoadConfigs(cfg)
+	confy, result, err := DiscoverAndLoadConfigs(cfg)
 	if err != nil {
 		t.Fatalf("Failed to discover configs: %v", err)
 	}
@@ -169,31 +169,31 @@ apps:
 
 	// Verify app-scoped config is extracted and merged
 	// 1. Global settings should be present
-	if driver := manager.GetString("database.driver"); driver != "postgres" {
+	if driver := confy.GetString("database.driver"); driver != "postgres" {
 		t.Errorf("Expected global database.driver to be 'postgres', got '%s'", driver)
 	}
 
 	// 2. App-scoped settings should override globals
-	if name := manager.GetString("database.name"); name != "test_service_dev" {
+	if name := confy.GetString("database.name"); name != "test_service_dev" {
 		t.Errorf("Expected database.name to be 'test_service_dev' (app-scoped + local), got '%s'", name)
 	}
 
-	if user := manager.GetString("database.user"); user != "test_user" {
+	if user := confy.GetString("database.user"); user != "test_user" {
 		t.Errorf("Expected database.user to be 'test_user' (app-scoped), got '%s'", user)
 	}
 
 	// 3. Local overrides should take precedence
-	if host := manager.GetString("database.host"); host != "localhost" {
+	if host := confy.GetString("database.host"); host != "localhost" {
 		t.Errorf("Expected database.host to be 'localhost' (local override), got '%s'", host)
 	}
 
 	// 4. App-specific settings should be present
-	if workers := manager.GetInt("service.workers"); workers != 10 {
+	if workers := confy.GetInt("service.workers"); workers != 10 {
 		t.Errorf("Expected service.workers to be 10, got %d", workers)
 	}
 
 	// 5. Logging level should be from local app override
-	if level := manager.GetString("logging.level"); level != "debug" {
+	if level := confy.GetString("logging.level"); level != "debug" {
 		t.Errorf("Expected logging.level to be 'debug' (local app override), got '%s'", level)
 	}
 }
@@ -212,7 +212,7 @@ func TestDiscoverAndLoadConfigs_NoConfigFiles(t *testing.T) {
 	cfg.RequireLocal = false
 	cfg.Logger = logger.NewNoopLogger()
 
-	manager, result, err := DiscoverAndLoadConfigs(cfg)
+	confy, result, err := DiscoverAndLoadConfigs(cfg)
 	if err != nil {
 		t.Fatalf("Should not error when config is optional: %v", err)
 	}
@@ -226,11 +226,11 @@ func TestDiscoverAndLoadConfigs_NoConfigFiles(t *testing.T) {
 	}
 
 	// Manager should still work with empty config
-	if manager == nil {
+	if confy == nil {
 		t.Fatal("Manager should not be nil")
 	}
 
-	if val := manager.GetString("nonexistent.key"); val != "" {
+	if val := confy.GetString("nonexistent.key"); val != "" {
 		t.Error("Non-existent key should return empty string")
 	}
 }
@@ -284,7 +284,7 @@ app:
 	cfg.SearchPaths = []string{deepDir}
 	cfg.Logger = logger.NewNoopLogger()
 
-	manager, result, err := DiscoverAndLoadConfigs(cfg)
+	confy, result, err := DiscoverAndLoadConfigs(cfg)
 	if err != nil {
 		t.Fatalf("Failed to discover config: %v", err)
 	}
@@ -298,13 +298,13 @@ app:
 	}
 
 	// Verify config was loaded
-	if found := manager.GetBool("app.found"); !found {
+	if found := confy.GetBool("app.found"); !found {
 		t.Error("Config value should be loaded from parent directory")
 	}
 }
 
-// TestAutoLoadConfigManager tests the convenience function.
-func TestAutoLoadConfigManager(t *testing.T) {
+// TestAutoLoadConfy tests the convenience function.
+func TestAutoLoadConfy(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "forge-auto-load-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
@@ -328,13 +328,13 @@ database:
 		t.Fatalf("Failed to write config: %v", err)
 	}
 
-	// Test AutoLoadConfigManager
-	manager, err := AutoLoadConfigManager("auto-test", logger.NewNoopLogger())
+	// Test AutoLoadConfy
+	confy, err := AutoLoadConfy("auto-test", logger.NewNoopLogger())
 	if err != nil {
-		t.Fatalf("AutoLoadConfigManager failed: %v", err)
+		t.Fatalf("AutoLoadConfy failed: %v", err)
 	}
 
-	if host := manager.GetString("database.host"); host != "example.com" {
+	if host := confy.GetString("database.host"); host != "example.com" {
 		t.Errorf("Expected database.host to be 'example.com', got '%s'", host)
 	}
 }
@@ -371,17 +371,17 @@ database:
 	}
 
 	// Test explicit path loading
-	manager, err := LoadConfigFromPaths(basePath, localPath, "", logger.NewNoopLogger())
+	confy, err := LoadConfigFromPaths(basePath, localPath, "", logger.NewNoopLogger())
 	if err != nil {
 		t.Fatalf("LoadConfigFromPaths failed: %v", err)
 	}
 
 	// Verify local overrides base
-	if host := manager.GetString("database.host"); host != "localhost" {
+	if host := confy.GetString("database.host"); host != "localhost" {
 		t.Errorf("Expected database.host to be 'localhost' (local override), got '%s'", host)
 	}
 
-	if name := manager.GetString("app.name"); name != "explicit-test" {
+	if name := confy.GetString("app.name"); name != "explicit-test" {
 		t.Errorf("Expected app.name to be 'explicit-test' (from base), got '%s'", name)
 	}
 }
@@ -389,42 +389,42 @@ database:
 // TestExtractAppScopedConfig tests app scoping extraction.
 func TestExtractAppScopedConfig(t *testing.T) {
 	// Create manager with app-scoped config
-	manager := NewManager(ManagerConfig{
+	confy := New(Config{
 		Logger: logger.NewNoopLogger(),
 	})
 
 	// Set config with apps section
-	manager.Set("global.setting", "global-value")
-	manager.Set("apps.myapp.app.name", "myapp")
-	manager.Set("apps.myapp.database.host", "app-db.example.com")
-	manager.Set("apps.myapp.custom.value", "app-specific")
+	confy.Set("global.setting", "global-value")
+	confy.Set("apps.myapp.app.name", "myapp")
+	confy.Set("apps.myapp.database.host", "app-db.example.com")
+	confy.Set("apps.myapp.custom.value", "app-specific")
 
 	// Extract app-scoped config
-	err := extractAppScopedConfig(manager, "myapp")
+	err := extractAppScopedConfig(confy, "myapp")
 	if err != nil {
 		t.Fatalf("Failed to extract app-scoped config: %v", err)
 	}
 
 	// Verify global settings are preserved
-	if val := manager.GetString("global.setting"); val != "global-value" {
+	if val := confy.GetString("global.setting"); val != "global-value" {
 		t.Errorf("Expected global.setting to be preserved, got '%s'", val)
 	}
 
 	// Verify app-scoped settings are promoted to root
-	if name := manager.GetString("app.name"); name != "myapp" {
+	if name := confy.GetString("app.name"); name != "myapp" {
 		t.Errorf("Expected app.name to be 'myapp', got '%s'", name)
 	}
 
-	if host := manager.GetString("database.host"); host != "app-db.example.com" {
+	if host := confy.GetString("database.host"); host != "app-db.example.com" {
 		t.Errorf("Expected database.host to be 'app-db.example.com', got '%s'", host)
 	}
 
-	if custom := manager.GetString("custom.value"); custom != "app-specific" {
+	if custom := confy.GetString("custom.value"); custom != "app-specific" {
 		t.Errorf("Expected custom.value to be 'app-specific', got '%s'", custom)
 	}
 
 	// Verify apps section is removed
-	if appsSection := manager.GetSection("apps"); appsSection != nil {
+	if appsSection := confy.GetSection("apps"); appsSection != nil {
 		t.Error("apps section should be removed after extraction")
 	}
 }
@@ -484,7 +484,7 @@ apps:
 	cfg.EnableAppScoping = true
 	cfg.Logger = logger.NewNoopLogger()
 
-	manager, _, err := DiscoverAndLoadConfigs(cfg)
+	confy, _, err := DiscoverAndLoadConfigs(cfg)
 	if err != nil {
 		t.Fatalf("Failed to load configs: %v", err)
 	}
@@ -507,7 +507,7 @@ apps:
 	}
 
 	for _, tt := range tests {
-		if val := manager.GetString(tt.key); val != tt.expected {
+		if val := confy.GetString(tt.key); val != tt.expected {
 			t.Errorf("%s: expected '%s', got '%s'", tt.desc, tt.expected, val)
 		}
 	}

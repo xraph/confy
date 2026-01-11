@@ -4,8 +4,8 @@ import (
 	"github.com/xraph/confy/internal"
 )
 
-// ConfigManager interface (matches v2.ConfigManagerInterface).
-type ConfigManager = internal.ConfigManager
+// Confy is the main interface for configuration management.
+type Confy = internal.Confy
 
 // =============================================================================
 // ERROR CONSTRUCTORS
@@ -137,5 +137,5 @@ var (
 // CONSTANTS
 // =============================================================================
 
-// ConfigKey is the service key for configuration manager.
+// ConfigKey is the service key for configuration.
 const ConfigKey = "confy:service"

@@ -1,6 +1,6 @@
 package confy
 
-// Test configuration manager uses type conversions for test data generation.
+// Test configuration uses type conversions for test data generation.
 // These conversions are safe in the test context.
 
 import (
@@ -17,10 +17,10 @@ import (
 	errors "github.com/xraph/go-utils/errs"
 )
 
-// TestConfigManager is a lightweight, in-memory implementation of ConfigManager
+// TestConfyImpl is a lightweight, in-memory implementation of Confy
 // optimized for testing scenarios. It provides realistic behavior without
 // external dependencies like files, databases, or network services.
-type TestConfigManager struct {
+type TestConfyImpl struct {
 	data            map[string]any
 	watchCallbacks  map[string][]func(string, any)
 	changeCallbacks []func(ConfigChange)
@@ -29,31 +29,31 @@ type TestConfigManager struct {
 	secretsManager  SecretsManager
 }
 
-// NewTestConfigManager creates a new test configuration manager.
-func NewTestConfigManager() ConfigManager {
-	return &TestConfigManager{
+// NewTestConfyImpl creates a new test configuration.
+func NewTestConfyImpl() Confy {
+	return &TestConfyImpl{
 		data:            make(map[string]any),
 		watchCallbacks:  make(map[string][]func(string, any)),
 		changeCallbacks: make([]func(ConfigChange), 0),
-		name:            "test-config-manager",
+		name:            "test-confy",
 		secretsManager:  NewMockSecretsManager(),
 	}
 }
 
-// NewTestConfigManagerWithData creates a test config manager with initial data.
-func NewTestConfigManagerWithData(data map[string]any) ConfigManager {
-	manager := &TestConfigManager{
+// NewTestConfyImplWithData creates a test Confy implementation with initial data.
+func NewTestConfyImplWithData(data map[string]any) Confy {
+	testConfy := &TestConfyImpl{
 		data:            make(map[string]any),
 		watchCallbacks:  make(map[string][]func(string, any)),
 		changeCallbacks: make([]func(ConfigChange), 0),
-		name:            "test-config-manager",
+		name:            "test-confy",
 		secretsManager:  NewMockSecretsManager(),
 	}
 
 	// Deep copy the provided data
-	manager.data = manager.deepCopyMap(data)
+	testConfy.data = testConfy.deepCopyMap(data)
 
-	return manager
+	return testConfy
 }
 
 // TestConfigBuilder provides a fluent interface for building test configurations.
@@ -91,9 +91,9 @@ func (b *TestConfigBuilder) SetDefaults(defaults map[string]any) *TestConfigBuil
 	return b
 }
 
-// Build creates a TestConfigManager with the configured data.
-func (b *TestConfigBuilder) Build() ConfigManager {
-	return NewTestConfigManagerWithData(b.data)
+// Build creates a TestConfyImpl with the configured data.
+func (b *TestConfigBuilder) Build() Confy {
+	return NewTestConfyImplWithData(b.data)
 }
 
 func (b *TestConfigBuilder) setValue(key string, value any) {
@@ -122,24 +122,24 @@ func (b *TestConfigBuilder) setValue(key string, value any) {
 // CORE INTERFACE IMPLEMENTATION
 // =============================================================================
 
-// Name returns the manager name.
-func (t *TestConfigManager) Name() string {
+// Name returns confy name.
+func (t *TestConfyImpl) Name() string {
 	return t.name
 }
 
-// SecretsManager returns the secrets manager.
-func (t *TestConfigManager) SecretsManager() SecretsManager {
+// SecretsManager returns the secrets management interface.
+func (t *TestConfyImpl) SecretsManager() SecretsManager {
 	return t.secretsManager
 }
 
 // LoadFrom simulates loading from sources.
-func (t *TestConfigManager) LoadFrom(sources ...ConfigSource) error {
+func (t *TestConfyImpl) LoadFrom(sources ...ConfigSource) error {
 	// Test implementation doesn't need to load from external sources
 	return nil
 }
 
 // Watch simulates watching for changes.
-func (t *TestConfigManager) Watch(ctx context.Context) error {
+func (t *TestConfyImpl) Watch(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 	}()
@@ -148,12 +148,12 @@ func (t *TestConfigManager) Watch(ctx context.Context) error {
 }
 
 // Reload simulates reloading configuration.
-func (t *TestConfigManager) Reload() error {
+func (t *TestConfyImpl) Reload() error {
 	return t.ReloadContext(context.Background())
 }
 
 // ReloadContext simulates reload with context.
-func (t *TestConfigManager) ReloadContext(ctx context.Context) error {
+func (t *TestConfyImpl) ReloadContext(ctx context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -168,12 +168,12 @@ func (t *TestConfigManager) ReloadContext(ctx context.Context) error {
 }
 
 // Validate always validates successfully in tests.
-func (t *TestConfigManager) Validate() error {
+func (t *TestConfyImpl) Validate() error {
 	return nil
 }
 
-// Stop stops the manager.
-func (t *TestConfigManager) Stop() error {
+// Stop stops confy.
+func (t *TestConfyImpl) Stop() error {
 	return nil
 }
 
@@ -182,7 +182,7 @@ func (t *TestConfigManager) Stop() error {
 // =============================================================================
 
 // Get returns a configuration value.
-func (t *TestConfigManager) Get(key string) any {
+func (t *TestConfyImpl) Get(key string) any {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -190,7 +190,7 @@ func (t *TestConfigManager) Get(key string) any {
 }
 
 // GetString returns a string value with optional default.
-func (t *TestConfigManager) GetString(key string, defaultValue ...string) string {
+func (t *TestConfyImpl) GetString(key string, defaultValue ...string) string {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -204,7 +204,7 @@ func (t *TestConfigManager) GetString(key string, defaultValue ...string) string
 }
 
 // GetInt returns an int value with optional default.
-func (t *TestConfigManager) GetInt(key string, defaultValue ...int) int {
+func (t *TestConfyImpl) GetInt(key string, defaultValue ...int) int {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -218,7 +218,7 @@ func (t *TestConfigManager) GetInt(key string, defaultValue ...int) int {
 }
 
 // GetInt8 returns an int8 value with optional default.
-func (t *TestConfigManager) GetInt8(key string, defaultValue ...int8) int8 {
+func (t *TestConfyImpl) GetInt8(key string, defaultValue ...int8) int8 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -232,7 +232,7 @@ func (t *TestConfigManager) GetInt8(key string, defaultValue ...int8) int8 {
 }
 
 // GetInt16 returns an int16 value with optional default.
-func (t *TestConfigManager) GetInt16(key string, defaultValue ...int16) int16 {
+func (t *TestConfyImpl) GetInt16(key string, defaultValue ...int16) int16 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -246,7 +246,7 @@ func (t *TestConfigManager) GetInt16(key string, defaultValue ...int16) int16 {
 }
 
 // GetInt32 returns an int32 value with optional default.
-func (t *TestConfigManager) GetInt32(key string, defaultValue ...int32) int32 {
+func (t *TestConfyImpl) GetInt32(key string, defaultValue ...int32) int32 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -260,7 +260,7 @@ func (t *TestConfigManager) GetInt32(key string, defaultValue ...int32) int32 {
 }
 
 // GetInt64 returns an int64 value with optional default.
-func (t *TestConfigManager) GetInt64(key string, defaultValue ...int64) int64 {
+func (t *TestConfyImpl) GetInt64(key string, defaultValue ...int64) int64 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -274,7 +274,7 @@ func (t *TestConfigManager) GetInt64(key string, defaultValue ...int64) int64 {
 }
 
 // GetUint returns a uint value with optional default.
-func (t *TestConfigManager) GetUint(key string, defaultValue ...uint) uint {
+func (t *TestConfyImpl) GetUint(key string, defaultValue ...uint) uint {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -288,7 +288,7 @@ func (t *TestConfigManager) GetUint(key string, defaultValue ...uint) uint {
 }
 
 // GetUint8 returns a uint8 value with optional default.
-func (t *TestConfigManager) GetUint8(key string, defaultValue ...uint8) uint8 {
+func (t *TestConfyImpl) GetUint8(key string, defaultValue ...uint8) uint8 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -302,7 +302,7 @@ func (t *TestConfigManager) GetUint8(key string, defaultValue ...uint8) uint8 {
 }
 
 // GetUint16 returns a uint16 value with optional default.
-func (t *TestConfigManager) GetUint16(key string, defaultValue ...uint16) uint16 {
+func (t *TestConfyImpl) GetUint16(key string, defaultValue ...uint16) uint16 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -316,7 +316,7 @@ func (t *TestConfigManager) GetUint16(key string, defaultValue ...uint16) uint16
 }
 
 // GetUint32 returns a uint32 value with optional default.
-func (t *TestConfigManager) GetUint32(key string, defaultValue ...uint32) uint32 {
+func (t *TestConfyImpl) GetUint32(key string, defaultValue ...uint32) uint32 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -330,7 +330,7 @@ func (t *TestConfigManager) GetUint32(key string, defaultValue ...uint32) uint32
 }
 
 // GetUint64 returns a uint64 value with optional default.
-func (t *TestConfigManager) GetUint64(key string, defaultValue ...uint64) uint64 {
+func (t *TestConfyImpl) GetUint64(key string, defaultValue ...uint64) uint64 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -344,7 +344,7 @@ func (t *TestConfigManager) GetUint64(key string, defaultValue ...uint64) uint64
 }
 
 // GetFloat32 returns a float32 value with optional default.
-func (t *TestConfigManager) GetFloat32(key string, defaultValue ...float32) float32 {
+func (t *TestConfyImpl) GetFloat32(key string, defaultValue ...float32) float32 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -358,7 +358,7 @@ func (t *TestConfigManager) GetFloat32(key string, defaultValue ...float32) floa
 }
 
 // GetFloat64 returns a float64 value with optional default.
-func (t *TestConfigManager) GetFloat64(key string, defaultValue ...float64) float64 {
+func (t *TestConfyImpl) GetFloat64(key string, defaultValue ...float64) float64 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -372,7 +372,7 @@ func (t *TestConfigManager) GetFloat64(key string, defaultValue ...float64) floa
 }
 
 // GetBool returns a bool value with optional default.
-func (t *TestConfigManager) GetBool(key string, defaultValue ...bool) bool {
+func (t *TestConfyImpl) GetBool(key string, defaultValue ...bool) bool {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -386,7 +386,7 @@ func (t *TestConfigManager) GetBool(key string, defaultValue ...bool) bool {
 }
 
 // GetDuration returns a duration value with optional default.
-func (t *TestConfigManager) GetDuration(key string, defaultValue ...time.Duration) time.Duration {
+func (t *TestConfyImpl) GetDuration(key string, defaultValue ...time.Duration) time.Duration {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -417,7 +417,7 @@ func (t *TestConfigManager) GetDuration(key string, defaultValue ...time.Duratio
 }
 
 // GetTime returns a time value with optional default.
-func (t *TestConfigManager) GetTime(key string, defaultValue ...time.Time) time.Time {
+func (t *TestConfyImpl) GetTime(key string, defaultValue ...time.Time) time.Time {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -446,7 +446,7 @@ func (t *TestConfigManager) GetTime(key string, defaultValue ...time.Time) time.
 }
 
 // GetSizeInBytes returns size in bytes with optional default.
-func (t *TestConfigManager) GetSizeInBytes(key string, defaultValue ...uint64) uint64 {
+func (t *TestConfyImpl) GetSizeInBytes(key string, defaultValue ...uint64) uint64 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -481,7 +481,7 @@ func (t *TestConfigManager) GetSizeInBytes(key string, defaultValue ...uint64) u
 // =============================================================================
 
 // GetStringSlice returns a string slice with optional default.
-func (t *TestConfigManager) GetStringSlice(key string, defaultValue ...[]string) []string {
+func (t *TestConfyImpl) GetStringSlice(key string, defaultValue ...[]string) []string {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -513,7 +513,7 @@ func (t *TestConfigManager) GetStringSlice(key string, defaultValue ...[]string)
 }
 
 // GetIntSlice returns an int slice with optional default.
-func (t *TestConfigManager) GetIntSlice(key string, defaultValue ...[]int) []int {
+func (t *TestConfyImpl) GetIntSlice(key string, defaultValue ...[]int) []int {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -545,7 +545,7 @@ func (t *TestConfigManager) GetIntSlice(key string, defaultValue ...[]int) []int
 }
 
 // GetInt64Slice returns an int64 slice with optional default.
-func (t *TestConfigManager) GetInt64Slice(key string, defaultValue ...[]int64) []int64 {
+func (t *TestConfyImpl) GetInt64Slice(key string, defaultValue ...[]int64) []int64 {
 	ints := t.GetIntSlice(key)
 	if ints == nil {
 		if len(defaultValue) > 0 {
@@ -564,7 +564,7 @@ func (t *TestConfigManager) GetInt64Slice(key string, defaultValue ...[]int64) [
 }
 
 // GetFloat64Slice returns a float64 slice with optional default.
-func (t *TestConfigManager) GetFloat64Slice(key string, defaultValue ...[]float64) []float64 {
+func (t *TestConfyImpl) GetFloat64Slice(key string, defaultValue ...[]float64) []float64 {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -594,7 +594,7 @@ func (t *TestConfigManager) GetFloat64Slice(key string, defaultValue ...[]float6
 }
 
 // GetBoolSlice returns a bool slice with optional default.
-func (t *TestConfigManager) GetBoolSlice(key string, defaultValue ...[]bool) []bool {
+func (t *TestConfyImpl) GetBoolSlice(key string, defaultValue ...[]bool) []bool {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -624,7 +624,7 @@ func (t *TestConfigManager) GetBoolSlice(key string, defaultValue ...[]bool) []b
 }
 
 // GetStringMap returns a string map with optional default.
-func (t *TestConfigManager) GetStringMap(key string, defaultValue ...map[string]string) map[string]string {
+func (t *TestConfyImpl) GetStringMap(key string, defaultValue ...map[string]string) map[string]string {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -654,12 +654,12 @@ func (t *TestConfigManager) GetStringMap(key string, defaultValue ...map[string]
 }
 
 // GetStringMapString is an alias for GetStringMap.
-func (t *TestConfigManager) GetStringMapString(key string, defaultValue ...map[string]string) map[string]string {
+func (t *TestConfyImpl) GetStringMapString(key string, defaultValue ...map[string]string) map[string]string {
 	return t.GetStringMap(key, defaultValue...)
 }
 
 // GetStringMapStringSlice returns a map of string slices with optional default.
-func (t *TestConfigManager) GetStringMapStringSlice(key string, defaultValue ...map[string][]string) map[string][]string {
+func (t *TestConfyImpl) GetStringMapStringSlice(key string, defaultValue ...map[string][]string) map[string][]string {
 	value := t.Get(key)
 	if value == nil {
 		if len(defaultValue) > 0 {
@@ -701,7 +701,7 @@ func (t *TestConfigManager) GetStringMapStringSlice(key string, defaultValue ...
 // =============================================================================
 
 // GetWithOptions returns a value with advanced options.
-func (t *TestConfigManager) GetWithOptions(key string, opts ...configcore.GetOption) (any, error) {
+func (t *TestConfyImpl) GetWithOptions(key string, opts ...configcore.GetOption) (any, error) {
 	options := &configcore.GetOptions{}
 	for _, opt := range opts {
 		opt(options)
@@ -737,7 +737,7 @@ func (t *TestConfigManager) GetWithOptions(key string, opts ...configcore.GetOpt
 }
 
 // GetStringWithOptions returns a string with advanced options.
-func (t *TestConfigManager) GetStringWithOptions(key string, opts ...configcore.GetOption) (string, error) {
+func (t *TestConfyImpl) GetStringWithOptions(key string, opts ...configcore.GetOption) (string, error) {
 	options := &configcore.GetOptions{}
 	for _, opt := range opts {
 		opt(options)
@@ -789,7 +789,7 @@ func (t *TestConfigManager) GetStringWithOptions(key string, opts ...configcore.
 }
 
 // GetIntWithOptions returns an int with advanced options.
-func (t *TestConfigManager) GetIntWithOptions(key string, opts ...configcore.GetOption) (int, error) {
+func (t *TestConfyImpl) GetIntWithOptions(key string, opts ...configcore.GetOption) (int, error) {
 	options := &configcore.GetOptions{}
 	for _, opt := range opts {
 		opt(options)
@@ -829,7 +829,7 @@ func (t *TestConfigManager) GetIntWithOptions(key string, opts ...configcore.Get
 }
 
 // GetBoolWithOptions returns a bool with advanced options.
-func (t *TestConfigManager) GetBoolWithOptions(key string, opts ...configcore.GetOption) (bool, error) {
+func (t *TestConfyImpl) GetBoolWithOptions(key string, opts ...configcore.GetOption) (bool, error) {
 	options := &configcore.GetOptions{}
 	for _, opt := range opts {
 		opt(options)
@@ -869,7 +869,7 @@ func (t *TestConfigManager) GetBoolWithOptions(key string, opts ...configcore.Ge
 }
 
 // GetDurationWithOptions returns a duration with advanced options.
-func (t *TestConfigManager) GetDurationWithOptions(key string, opts ...configcore.GetOption) (time.Duration, error) {
+func (t *TestConfyImpl) GetDurationWithOptions(key string, opts ...configcore.GetOption) (time.Duration, error) {
 	options := &configcore.GetOptions{}
 	for _, opt := range opts {
 		opt(options)
@@ -939,7 +939,7 @@ func (t *TestConfigManager) GetDurationWithOptions(key string, opts ...configcor
 // =============================================================================
 
 // Set sets a configuration value.
-func (t *TestConfigManager) Set(key string, value any) {
+func (t *TestConfyImpl) Set(key string, value any) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -962,12 +962,12 @@ func (t *TestConfigManager) Set(key string, value any) {
 // =============================================================================
 
 // Bind binds configuration to a struct (simplified for testing).
-func (t *TestConfigManager) Bind(key string, target any) error {
+func (t *TestConfyImpl) Bind(key string, target any) error {
 	return t.BindWithOptions(key, target, configcore.DefaultBindOptions())
 }
 
 // BindWithDefault binds with a default value.
-func (t *TestConfigManager) BindWithDefault(key string, target any, defaultValue any) error {
+func (t *TestConfyImpl) BindWithDefault(key string, target any, defaultValue any) error {
 	options := configcore.DefaultBindOptions()
 	options.DefaultValue = defaultValue
 
@@ -975,7 +975,7 @@ func (t *TestConfigManager) BindWithDefault(key string, target any, defaultValue
 }
 
 // BindWithOptions binds with flexible options.
-func (t *TestConfigManager) BindWithOptions(key string, target any, options configcore.BindOptions) error {
+func (t *TestConfyImpl) BindWithOptions(key string, target any, options configcore.BindOptions) error {
 	var data any
 	if key == "" {
 		data = t.data
@@ -1016,7 +1016,7 @@ func (t *TestConfigManager) BindWithOptions(key string, target any, options conf
 // =============================================================================
 
 // WatchWithCallback registers a callback for key changes.
-func (t *TestConfigManager) WatchWithCallback(key string, callback func(string, any)) {
+func (t *TestConfyImpl) WatchWithCallback(key string, callback func(string, any)) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -1028,7 +1028,7 @@ func (t *TestConfigManager) WatchWithCallback(key string, callback func(string, 
 }
 
 // WatchChanges registers a callback for all changes.
-func (t *TestConfigManager) WatchChanges(callback func(ConfigChange)) {
+func (t *TestConfyImpl) WatchChanges(callback func(ConfigChange)) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -1040,7 +1040,7 @@ func (t *TestConfigManager) WatchChanges(callback func(ConfigChange)) {
 // =============================================================================
 
 // GetSourceMetadata returns metadata for all sources.
-func (t *TestConfigManager) GetSourceMetadata() map[string]*SourceMetadata {
+func (t *TestConfyImpl) GetSourceMetadata() map[string]*SourceMetadata {
 	return map[string]*SourceMetadata{
 		"test": {
 			Name:         "test",
@@ -1056,7 +1056,7 @@ func (t *TestConfigManager) GetSourceMetadata() map[string]*SourceMetadata {
 }
 
 // GetKeys returns all configuration keys.
-func (t *TestConfigManager) GetKeys() []string {
+func (t *TestConfyImpl) GetKeys() []string {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -1064,7 +1064,7 @@ func (t *TestConfigManager) GetKeys() []string {
 }
 
 // GetSection returns a configuration section.
-func (t *TestConfigManager) GetSection(key string) map[string]any {
+func (t *TestConfyImpl) GetSection(key string) map[string]any {
 	value := t.Get(key)
 	if value == nil {
 		return nil
@@ -1078,12 +1078,12 @@ func (t *TestConfigManager) GetSection(key string) map[string]any {
 }
 
 // HasKey checks if a key exists.
-func (t *TestConfigManager) HasKey(key string) bool {
+func (t *TestConfyImpl) HasKey(key string) bool {
 	return t.Get(key) != nil
 }
 
 // IsSet checks if a key is set and not empty.
-func (t *TestConfigManager) IsSet(key string) bool {
+func (t *TestConfyImpl) IsSet(key string) bool {
 	value := t.Get(key)
 	if value == nil {
 		return false
@@ -1102,7 +1102,7 @@ func (t *TestConfigManager) IsSet(key string) bool {
 }
 
 // Size returns the number of keys.
-func (t *TestConfigManager) Size() int {
+func (t *TestConfyImpl) Size() int {
 	return len(t.GetKeys())
 }
 
@@ -1110,24 +1110,24 @@ func (t *TestConfigManager) Size() int {
 // STRUCTURE OPERATIONS
 // =============================================================================
 
-// Sub returns a sub-configuration manager.
-func (t *TestConfigManager) Sub(key string) ConfigManager {
+// Sub returns a sub-configuration.
+func (t *TestConfyImpl) Sub(key string) Confy {
 	subData := t.GetSection(key)
 	if subData == nil {
 		subData = make(map[string]any)
 	}
 
-	return NewTestConfigManagerWithData(subData)
+	return NewTestConfyImplWithData(subData)
 }
 
-// MergeWith merges another config manager.
-func (t *TestConfigManager) MergeWith(other ConfigManager) error {
+// MergeWith merges another Confy instance.
+func (t *TestConfyImpl) MergeWith(other Confy) error {
 	// Try to get all settings - if the implementation has GetAllSettings, use it
 	// Otherwise, we can't merge (this is a limitation of the interface)
 	var otherData map[string]any
-	if mgr, ok := other.(*Manager); ok {
-		otherData = mgr.GetAllSettings()
-	} else if testMgr, ok := other.(*TestConfigManager); ok {
+	if impl, ok := other.(*ConfyImpl); ok {
+		otherData = impl.GetAllSettings()
+	} else if testMgr, ok := other.(*TestConfyImpl); ok {
 		otherData = testMgr.GetAllSettings()
 	} else {
 		return errors.New("cannot merge: GetAllSettings not available")
@@ -1142,15 +1142,15 @@ func (t *TestConfigManager) MergeWith(other ConfigManager) error {
 }
 
 // Clone creates a deep copy.
-func (t *TestConfigManager) Clone() ConfigManager {
+func (t *TestConfyImpl) Clone() Confy {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	return NewTestConfigManagerWithData(t.data)
+	return NewTestConfyImplWithData(t.data)
 }
 
 // GetAllSettings returns all settings.
-func (t *TestConfigManager) GetAllSettings() map[string]any {
+func (t *TestConfyImpl) GetAllSettings() map[string]any {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
@@ -1162,7 +1162,7 @@ func (t *TestConfigManager) GetAllSettings() map[string]any {
 // =============================================================================
 
 // Reset clears all configuration.
-func (t *TestConfigManager) Reset() {
+func (t *TestConfyImpl) Reset() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -1172,12 +1172,12 @@ func (t *TestConfigManager) Reset() {
 }
 
 // ExpandEnvVars expands environment variables (no-op for testing).
-func (t *TestConfigManager) ExpandEnvVars() error {
+func (t *TestConfyImpl) ExpandEnvVars() error {
 	return nil
 }
 
 // SafeGet returns a value with type checking.
-func (t *TestConfigManager) SafeGet(key string, expectedType reflect.Type) (any, error) {
+func (t *TestConfyImpl) SafeGet(key string, expectedType reflect.Type) (any, error) {
 	value := t.Get(key)
 	if value == nil {
 		return nil, fmt.Errorf("key '%s' not found", key)
@@ -1196,62 +1196,62 @@ func (t *TestConfigManager) SafeGet(key string, expectedType reflect.Type) (any,
 // =============================================================================
 
 // GetBytesSize is an alias for GetSizeInBytes.
-func (t *TestConfigManager) GetBytesSize(key string, defaultValue ...uint64) uint64 {
+func (t *TestConfyImpl) GetBytesSize(key string, defaultValue ...uint64) uint64 {
 	return t.GetSizeInBytes(key, defaultValue...)
 }
 
 // InConfig is an alias for HasKey.
-func (t *TestConfigManager) InConfig(key string) bool {
+func (t *TestConfyImpl) InConfig(key string) bool {
 	return t.HasKey(key)
 }
 
 // UnmarshalKey is an alias for Bind.
-func (t *TestConfigManager) UnmarshalKey(key string, rawVal any) error {
+func (t *TestConfyImpl) UnmarshalKey(key string, rawVal any) error {
 	return t.Bind(key, rawVal)
 }
 
 // Unmarshal unmarshals entire configuration.
-func (t *TestConfigManager) Unmarshal(rawVal any) error {
+func (t *TestConfyImpl) Unmarshal(rawVal any) error {
 	return t.Bind("", rawVal)
 }
 
 // AllKeys is an alias for GetKeys.
-func (t *TestConfigManager) AllKeys() []string {
+func (t *TestConfyImpl) AllKeys() []string {
 	return t.GetKeys()
 }
 
 // AllSettings is an alias for GetAllSettings.
-func (t *TestConfigManager) AllSettings() map[string]any {
+func (t *TestConfyImpl) AllSettings() map[string]any {
 	return t.GetAllSettings()
 }
 
 // ReadInConfig reads configuration.
-func (t *TestConfigManager) ReadInConfig() error {
+func (t *TestConfyImpl) ReadInConfig() error {
 	return t.ReloadContext(context.Background())
 }
 
 // SetConfigType sets the configuration type (no-op for testing).
-func (t *TestConfigManager) SetConfigType(configType string) {
+func (t *TestConfyImpl) SetConfigType(configType string) {
 	// No-op for testing
 }
 
 // SetConfigFile sets the configuration file (no-op for testing).
-func (t *TestConfigManager) SetConfigFile(filePath string) error {
+func (t *TestConfyImpl) SetConfigFile(filePath string) error {
 	return nil
 }
 
 // ConfigFileUsed returns the config file path.
-func (t *TestConfigManager) ConfigFileUsed() string {
+func (t *TestConfyImpl) ConfigFileUsed() string {
 	return "test://memory"
 }
 
 // WatchConfig is an alias for Watch.
-func (t *TestConfigManager) WatchConfig() error {
+func (t *TestConfyImpl) WatchConfig() error {
 	return t.Watch(context.Background())
 }
 
 // OnConfigChange is an alias for WatchChanges.
-func (t *TestConfigManager) OnConfigChange(callback func(ConfigChange)) {
+func (t *TestConfyImpl) OnConfigChange(callback func(ConfigChange)) {
 	t.WatchChanges(callback)
 }
 
@@ -1259,7 +1259,7 @@ func (t *TestConfigManager) OnConfigChange(callback func(ConfigChange)) {
 // HELPER METHODS
 // =============================================================================
 
-func (t *TestConfigManager) getValue(key string) any {
+func (t *TestConfyImpl) getValue(key string) any {
 	keys := strings.Split(key, ".")
 	current := any(t.data)
 
@@ -1281,7 +1281,7 @@ func (t *TestConfigManager) getValue(key string) any {
 	return current
 }
 
-func (t *TestConfigManager) setValue(key string, value any) {
+func (t *TestConfyImpl) setValue(key string, value any) {
 	keys := strings.Split(key, ".")
 	current := t.data
 
@@ -1303,7 +1303,7 @@ func (t *TestConfigManager) setValue(key string, value any) {
 	}
 }
 
-func (t *TestConfigManager) convertToInt(value any) int {
+func (t *TestConfyImpl) convertToInt(value any) int {
 	switch v := value.(type) {
 	case int:
 		return v
@@ -1330,7 +1330,7 @@ func (t *TestConfigManager) convertToInt(value any) int {
 	return 0
 }
 
-func (t *TestConfigManager) convertToFloat64(value any) float64 {
+func (t *TestConfyImpl) convertToFloat64(value any) float64 {
 	switch v := value.(type) {
 	case float64:
 		return v
@@ -1349,7 +1349,7 @@ func (t *TestConfigManager) convertToFloat64(value any) float64 {
 	return 0
 }
 
-func (t *TestConfigManager) convertToBool(value any) bool {
+func (t *TestConfyImpl) convertToBool(value any) bool {
 	switch v := value.(type) {
 	case bool:
 		return v
@@ -1368,7 +1368,7 @@ func (t *TestConfigManager) convertToBool(value any) bool {
 	return false
 }
 
-func (t *TestConfigManager) parseSizeInBytes(s string) uint64 {
+func (t *TestConfyImpl) parseSizeInBytes(s string) uint64 {
 	s = strings.TrimSpace(strings.ToUpper(s))
 	if s == "" {
 		return 0
@@ -1400,7 +1400,7 @@ func (t *TestConfigManager) parseSizeInBytes(s string) uint64 {
 
 // structToMap converts a struct to map[string]any using struct tags
 // Supports yaml tags (preferred) and json tags as fallback, with optional custom tagName.
-func (t *TestConfigManager) structToMap(v any, tagName string) (map[string]any, error) {
+func (t *TestConfyImpl) structToMap(v any, tagName string) (map[string]any, error) {
 	val := reflect.ValueOf(v)
 
 	// Handle pointer to struct
@@ -1487,7 +1487,7 @@ func (t *TestConfigManager) structToMap(v any, tagName string) (map[string]any, 
 	return result, nil
 }
 
-func (t *TestConfigManager) bindValue(value any, target any) error {
+func (t *TestConfyImpl) bindValue(value any, target any) error {
 	targetValue := reflect.ValueOf(target)
 	if targetValue.Kind() != reflect.Ptr || targetValue.Elem().Kind() != reflect.Struct {
 		return errors.New("target must be a pointer to struct")
@@ -1507,7 +1507,7 @@ func (t *TestConfigManager) bindValue(value any, target any) error {
 	return nil
 }
 
-func (t *TestConfigManager) bindMapToStruct(mapData map[string]any, structValue reflect.Value) error {
+func (t *TestConfyImpl) bindMapToStruct(mapData map[string]any, structValue reflect.Value) error {
 	structType := structValue.Type()
 
 	for i := 0; i < structValue.NumField(); i++ {
@@ -1533,7 +1533,7 @@ func (t *TestConfigManager) bindMapToStruct(mapData map[string]any, structValue 
 	return nil
 }
 
-func (t *TestConfigManager) getFieldName(field reflect.StructField) string {
+func (t *TestConfyImpl) getFieldName(field reflect.StructField) string {
 	if tag := field.Tag.Get("yaml"); tag != "" && tag != "-" {
 		return strings.Split(tag, ",")[0]
 	}
@@ -1549,7 +1549,7 @@ func (t *TestConfigManager) getFieldName(field reflect.StructField) string {
 	return field.Name
 }
 
-func (t *TestConfigManager) setFieldValue(field reflect.Value, value any) error {
+func (t *TestConfyImpl) setFieldValue(field reflect.Value, value any) error {
 	if value == nil {
 		return nil
 	}
@@ -1594,7 +1594,7 @@ func (t *TestConfigManager) setFieldValue(field reflect.Value, value any) error 
 	return nil
 }
 
-func (t *TestConfigManager) setSliceValue(field reflect.Value, slice []any) error {
+func (t *TestConfyImpl) setSliceValue(field reflect.Value, slice []any) error {
 	sliceValue := reflect.MakeSlice(field.Type(), len(slice), len(slice))
 	for i, item := range slice {
 		if err := t.setFieldValue(sliceValue.Index(i), item); err != nil {
@@ -1607,7 +1607,7 @@ func (t *TestConfigManager) setSliceValue(field reflect.Value, slice []any) erro
 	return nil
 }
 
-func (t *TestConfigManager) setMapValue(field reflect.Value, mapData map[string]any) error {
+func (t *TestConfyImpl) setMapValue(field reflect.Value, mapData map[string]any) error {
 	mapValue := reflect.MakeMap(field.Type())
 
 	for key, value := range mapData {
@@ -1621,7 +1621,7 @@ func (t *TestConfigManager) setMapValue(field reflect.Value, mapData map[string]
 	return nil
 }
 
-func (t *TestConfigManager) getAllKeys(data any, prefix string) []string {
+func (t *TestConfyImpl) getAllKeys(data any, prefix string) []string {
 	var keys []string
 
 	if mapData, ok := data.(map[string]any); ok {
@@ -1640,7 +1640,7 @@ func (t *TestConfigManager) getAllKeys(data any, prefix string) []string {
 	return keys
 }
 
-func (t *TestConfigManager) deepCopyMap(original map[string]any) map[string]any {
+func (t *TestConfyImpl) deepCopyMap(original map[string]any) map[string]any {
 	copy := make(map[string]any)
 
 	for key, value := range original {
@@ -1657,7 +1657,7 @@ func (t *TestConfigManager) deepCopyMap(original map[string]any) map[string]any 
 	return copy
 }
 
-func (t *TestConfigManager) deepCopySlice(original []any) []any {
+func (t *TestConfyImpl) deepCopySlice(original []any) []any {
 	copy := make([]any, len(original))
 
 	for i, value := range original {
@@ -1674,7 +1674,7 @@ func (t *TestConfigManager) deepCopySlice(original []any) []any {
 	return copy
 }
 
-func (t *TestConfigManager) mergeData(target, source map[string]any) {
+func (t *TestConfyImpl) mergeData(target, source map[string]any) {
 	for key, value := range source {
 		if existingValue, exists := target[key]; exists {
 			if existingMap, ok := existingValue.(map[string]any); ok {
@@ -1690,7 +1690,7 @@ func (t *TestConfigManager) mergeData(target, source map[string]any) {
 	}
 }
 
-func (t *TestConfigManager) notifyWatchCallbacks() {
+func (t *TestConfyImpl) notifyWatchCallbacks() {
 	for key, callbacks := range t.watchCallbacks {
 		value := t.getValue(key)
 		for _, callback := range callbacks {
@@ -1699,7 +1699,7 @@ func (t *TestConfigManager) notifyWatchCallbacks() {
 	}
 }
 
-func (t *TestConfigManager) notifyChangeCallbacks(change ConfigChange) {
+func (t *TestConfyImpl) notifyChangeCallbacks(change ConfigChange) {
 	for _, callback := range t.changeCallbacks {
 		go callback(change)
 	}
@@ -1710,7 +1710,7 @@ func (t *TestConfigManager) notifyChangeCallbacks(change ConfigChange) {
 // =============================================================================
 
 // SimulateConfigChange simulates a configuration change for testing watchers.
-func (t *TestConfigManager) SimulateConfigChange(key string, newValue any) {
+func (t *TestConfyImpl) SimulateConfigChange(key string, newValue any) {
 	oldValue := t.Get(key)
 	t.Set(key, newValue)
 
@@ -1732,40 +1732,40 @@ func (t *TestConfigManager) SimulateConfigChange(key string, newValue any) {
 
 // TestConfigAssertions provides assertion helpers for testing configuration.
 type TestConfigAssertions struct {
-	manager *TestConfigManager
+	confy *TestConfyImpl
 }
 
-// NewTestConfigAssertions creates assertion helpers for the test config manager.
-func NewTestConfigAssertions(manager ConfigManager) *TestConfigAssertions {
-	if testManager, ok := manager.(*TestConfigManager); ok {
-		return &TestConfigAssertions{manager: testManager}
+// NewTestConfigAssertions creates assertion helpers for the test Confy implementation.
+func NewTestConfigAssertions(c Confy) *TestConfigAssertions {
+	if testImpl, ok := c.(*TestConfyImpl); ok {
+		return &TestConfigAssertions{confy: testImpl}
 	}
 
-	panic("provided manager is not a TestConfigManager")
+	panic("provided Confy is not a TestConfyImpl")
 }
 
 // AssertKeyExists checks that a key exists.
 func (a *TestConfigAssertions) AssertKeyExists(key string) bool {
-	return a.manager.HasKey(key)
+	return a.confy.HasKey(key)
 }
 
 // AssertKeyEquals checks that a key has the expected value.
 func (a *TestConfigAssertions) AssertKeyEquals(key string, expected any) bool {
-	actual := a.manager.Get(key)
+	actual := a.confy.Get(key)
 
 	return reflect.DeepEqual(actual, expected)
 }
 
 // AssertStringEquals checks that a key has the expected string value.
 func (a *TestConfigAssertions) AssertStringEquals(key string, expected string) bool {
-	actual := a.manager.GetString(key)
+	actual := a.confy.GetString(key)
 
 	return actual == expected
 }
 
 // AssertIntEquals checks that a key has the expected int value.
 func (a *TestConfigAssertions) AssertIntEquals(key string, expected int) bool {
-	actual := a.manager.GetInt(key)
+	actual := a.confy.GetInt(key)
 
 	return actual == expected
 }
@@ -2742,7 +2742,7 @@ func (m *MockSecretsManager) WasRotateCalledWith(key string) bool {
 	return false
 }
 
-// IsStarted returns whether the manager is started.
+// IsStarted returns whether confy is started.
 func (m *MockSecretsManager) IsStarted() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

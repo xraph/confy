@@ -213,12 +213,12 @@ func ErrUnsupportedType(typeName string, context string) error {
 
 // ErrMergeNotSupported creates a merge not supported error.
 func ErrMergeNotSupported() error {
-	return errors.NewError(CodeMerge, "merge not supported for this ConfigManager implementation", nil)
+	return errors.NewError(CodeMerge, "merge not supported for this Confy implementation", nil)
 }
 
 // ErrWatchAlreadyActive creates a watch already active error.
 func ErrWatchAlreadyActive() error {
-	return errors.NewError(CodeWatch, "configuration manager already watching", nil)
+	return errors.NewError(CodeWatch, "confy already watching", nil)
 }
 
 // ErrConfigFileNotFound creates a config file not found error.
