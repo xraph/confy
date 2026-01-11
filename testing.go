@@ -653,11 +653,6 @@ func (t *TestConfyImpl) GetStringMap(key string, defaultValue ...map[string]stri
 	return nil
 }
 
-// GetStringMapString is an alias for GetStringMap.
-func (t *TestConfyImpl) GetStringMapString(key string, defaultValue ...map[string]string) map[string]string {
-	return t.GetStringMap(key, defaultValue...)
-}
-
 // GetStringMapStringSlice returns a map of string slices with optional default.
 func (t *TestConfyImpl) GetStringMapStringSlice(key string, defaultValue ...map[string][]string) map[string][]string {
 	value := t.Get(key)
@@ -1195,64 +1190,9 @@ func (t *TestConfyImpl) SafeGet(key string, expectedType reflect.Type) (any, err
 // COMPATIBILITY ALIASES
 // =============================================================================
 
-// GetBytesSize is an alias for GetSizeInBytes.
-func (t *TestConfyImpl) GetBytesSize(key string, defaultValue ...uint64) uint64 {
-	return t.GetSizeInBytes(key, defaultValue...)
-}
-
-// InConfig is an alias for HasKey.
-func (t *TestConfyImpl) InConfig(key string) bool {
-	return t.HasKey(key)
-}
-
-// UnmarshalKey is an alias for Bind.
-func (t *TestConfyImpl) UnmarshalKey(key string, rawVal any) error {
-	return t.Bind(key, rawVal)
-}
-
-// Unmarshal unmarshals entire configuration.
-func (t *TestConfyImpl) Unmarshal(rawVal any) error {
-	return t.Bind("", rawVal)
-}
-
-// AllKeys is an alias for GetKeys.
-func (t *TestConfyImpl) AllKeys() []string {
-	return t.GetKeys()
-}
-
-// AllSettings is an alias for GetAllSettings.
-func (t *TestConfyImpl) AllSettings() map[string]any {
-	return t.GetAllSettings()
-}
-
-// ReadInConfig reads configuration.
-func (t *TestConfyImpl) ReadInConfig() error {
-	return t.ReloadContext(context.Background())
-}
-
-// SetConfigType sets the configuration type (no-op for testing).
-func (t *TestConfyImpl) SetConfigType(configType string) {
-	// No-op for testing
-}
-
-// SetConfigFile sets the configuration file (no-op for testing).
-func (t *TestConfyImpl) SetConfigFile(filePath string) error {
-	return nil
-}
-
 // ConfigFileUsed returns the config file path.
 func (t *TestConfyImpl) ConfigFileUsed() string {
 	return "test://memory"
-}
-
-// WatchConfig is an alias for Watch.
-func (t *TestConfyImpl) WatchConfig() error {
-	return t.Watch(context.Background())
-}
-
-// OnConfigChange is an alias for WatchChanges.
-func (t *TestConfyImpl) OnConfigChange(callback func(ConfigChange)) {
-	t.WatchChanges(callback)
 }
 
 // =============================================================================

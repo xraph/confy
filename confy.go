@@ -624,12 +624,6 @@ func (c *ConfyImpl) GetStringMap(key string, defaultValue ...map[string]string) 
 	return nil
 }
 
-// GetStringMapString is deprecated. Use GetStringMap instead.
-// Deprecated: This is a redundant alias. Use GetStringMap directly.
-func (c *ConfyImpl) GetStringMapString(key string, defaultValue ...map[string]string) map[string]string {
-	return c.GetStringMap(key, defaultValue...)
-}
-
 // GetStringMapStringSlice returns a map of string slices with optional default.
 func (c *ConfyImpl) GetStringMapStringSlice(key string, defaultValue ...map[string][]string) map[string][]string {
 	value := c.Get(key)
@@ -1423,62 +1417,6 @@ func (c *ConfyImpl) Stop() error {
 	return nil
 }
 
-// =============================================================================
-// COMPATIBILITY ALIASES
-// =============================================================================
-
-// GetBytesSize is deprecated. Use GetSizeInBytes instead.
-// Deprecated: This is a redundant alias. Use GetSizeInBytes directly.
-func (c *ConfyImpl) GetBytesSize(key string, defaultValue ...uint64) uint64 {
-	return c.GetSizeInBytes(key, defaultValue...)
-}
-
-// InConfig is an alias for HasKey.
-func (c *ConfyImpl) InConfig(key string) bool {
-	return c.HasKey(key)
-}
-
-// UnmarshalKey is an alias for Bind.
-func (c *ConfyImpl) UnmarshalKey(key string, rawVal any) error {
-	return c.Bind(key, rawVal)
-}
-
-// Unmarshal unmarshals entire configuration.
-func (c *ConfyImpl) Unmarshal(rawVal any) error {
-	return c.Bind("", rawVal)
-}
-
-// AllKeys is an alias for GetKeys.
-func (c *ConfyImpl) AllKeys() []string {
-	return c.GetKeys()
-}
-
-// AllSettings is an alias for GetAllSettings.
-func (c *ConfyImpl) AllSettings() map[string]any {
-	return c.GetAllSettings()
-}
-
-// ReadInConfig reads configuration.
-func (c *ConfyImpl) ReadInConfig() error {
-	return c.ReloadContext(context.Background())
-}
-
-// SetConfigType sets the configuration type.
-func (c *ConfyImpl) SetConfigType(configType string) {
-	// Placeholder for loader configuration
-}
-
-// SetConfigFile sets the configuration file.
-func (c *ConfyImpl) SetConfigFile(filePath string) error {
-	if c.logger != nil {
-		c.logger.Info("configuration file path set",
-			logger.String("file_path", filePath),
-		)
-	}
-
-	return nil
-}
-
 // ConfigFileUsed returns the config file path.
 func (c *ConfyImpl) ConfigFileUsed() string {
 	sources := c.registry.GetSources()
@@ -1491,16 +1429,6 @@ func (c *ConfyImpl) ConfigFileUsed() string {
 	}
 
 	return ""
-}
-
-// WatchConfig is an alias for Watch.
-func (c *ConfyImpl) WatchConfig() error {
-	return c.Watch(context.Background())
-}
-
-// OnConfigChange is an alias for WatchChanges.
-func (c *ConfyImpl) OnConfigChange(callback func(ConfigChange)) {
-	c.WatchChanges(callback)
 }
 
 // =============================================================================

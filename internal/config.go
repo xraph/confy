@@ -47,7 +47,6 @@ type Confy interface {
 	GetFloat64Slice(key string, defaultValue ...[]float64) []float64
 	GetBoolSlice(key string, defaultValue ...[]bool) []bool
 	GetStringMap(key string, defaultValue ...map[string]string) map[string]string
-	GetStringMapString(key string, defaultValue ...map[string]string) map[string]string
 	GetStringMapStringSlice(key string, defaultValue ...map[string][]string) map[string][]string
 
 	// Advanced getters with functional options
@@ -87,20 +86,7 @@ type Confy interface {
 	Reset()
 	ExpandEnvVars() error
 	SafeGet(key string, expectedType reflect.Type) (any, error)
-
-	// Compatibility aliases
-	GetBytesSize(key string, defaultValue ...uint64) uint64
-	InConfig(key string) bool
-	UnmarshalKey(key string, rawVal any) error
-	Unmarshal(rawVal any) error
-	AllKeys() []string
-	AllSettings() map[string]any
-	ReadInConfig() error
-	SetConfigType(configType string)
-	SetConfigFile(filePath string) error
 	ConfigFileUsed() string
-	WatchConfig() error
-	OnConfigChange(callback func(ConfigChange))
 }
 
 // GetOption defines functional options for advanced get operations.

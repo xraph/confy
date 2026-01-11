@@ -1466,56 +1466,13 @@ func TestConfy_Stop(t *testing.T) {
 	}
 }
 
-// =============================================================================
-// COMPATIBILITY ALIAS TESTS
-// =============================================================================
-
-func TestConfy_CompatibilityAliases(t *testing.T) {
+func TestConfy_ConfigFileUsed(t *testing.T) {
 	confy := New(Config{}).(*ConfyImpl)
-	confy.data = map[string]any{
-		"key": "value",
-	}
 
-	// Test GetBytesSize
-	if size := confy.GetBytesSize("key"); size != 0 {
-		// OK - tested in GetSizeInBytes
-	}
-
-	// Test InConfig
-	if has := confy.InConfig("key"); !has {
-		t.Error("InConfig(\"key\") = false, want true")
-	}
-
-	// Test AllKeys
-	keys := confy.AllKeys()
-	if len(keys) == 0 {
-		t.Error("AllKeys() returned empty slice")
-	}
-
-	// Test AllSettings
-	settings := confy.AllSettings()
-	if settings == nil {
-		t.Error("AllSettings() returned nil")
-	}
-
-	// Test UnmarshalKey
-	var value string
-
-	err := confy.UnmarshalKey("key", &value)
-	if err != nil {
-		t.Errorf("UnmarshalKey() error = %v", err)
-	}
-
-	// Test ConfigFileUsed
-	_ = confy.ConfigFileUsed()
-
-	// Test SetConfigType
-	confy.SetConfigType("yaml")
-
-	// Test SetConfigFile
-	err = confy.SetConfigFile("/path/to/config.yaml")
-	if err != nil {
-		t.Errorf("SetConfigFile() error = %v", err)
+	// Test ConfigFileUsed returns empty string when no file sources
+	path := confy.ConfigFileUsed()
+	if path != "" {
+		t.Errorf("ConfigFileUsed() = %q, want empty string", path)
 	}
 }
 
