@@ -924,6 +924,7 @@ func (fsp *FileSecretProvider) GetSecret(ctx context.Context, key string) (strin
 	if err != nil {
 		return "", fmt.Errorf("failed to open secret directory %s: %w", fsp.basePath, err)
 	}
+	defer func() { _ = root.Close() }()
 	data, err := root.ReadFile(key)
 	if err != nil {
 		return "", fmt.Errorf("failed to read secret file %s: %w", key, err)
@@ -944,6 +945,7 @@ func (fsp *FileSecretProvider) SetSecret(ctx context.Context, key, value string)
 	if err != nil {
 		return fmt.Errorf("failed to open secret directory %s: %w", fsp.basePath, err)
 	}
+	defer func() { _ = root.Close() }()
 	if err := root.WriteFile(key, []byte(value), 0600); err != nil {
 		return fmt.Errorf("failed to write secret file %s: %w", key, err)
 	}

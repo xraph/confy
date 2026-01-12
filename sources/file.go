@@ -195,6 +195,7 @@ func (fs *FileSource) Load(ctx context.Context) (map[string]any, error) {
 	if err != nil {
 		return nil, configcore.ErrConfigError("failed to open root directory "+dir, err)
 	}
+	defer func() { _ = root.Close() }()
 	content, err := root.ReadFile(filename)
 	if err != nil {
 		return nil, configcore.ErrConfigError("failed to read file "+path, err)
