@@ -842,19 +842,19 @@ func (t *TestConfyImpl) GetBoolWithOptions(key string, opts ...configcore.GetOpt
 	value := t.Get(key)
 
 	if value == nil {
-		if options.Required {
-			return false, ErrConfigError(fmt.Sprintf("required key '%s' not found", key), nil)
-		}
+	if options.Required {
+		return false, ErrConfigError(fmt.Sprintf("required key '%s' not found", key), nil)
+	}
 
-		if options.OnMissing != nil {
-			value = options.OnMissing(key)
-		} else if options.Default != nil {
-			if defaultBool, ok := options.Default.(bool); ok {
-				return defaultBool, nil
-			}
+	if options.OnMissing != nil {
+		_ = options.OnMissing(key)
+	} else if options.Default != nil {
+		if defaultBool, ok := options.Default.(bool); ok {
+			return defaultBool, nil
 		}
+	}
 
-		return false, nil
+	return false, nil
 	}
 
 	if options.Transform != nil {
@@ -882,19 +882,19 @@ func (t *TestConfyImpl) GetDurationWithOptions(key string, opts ...configcore.Ge
 	value := t.Get(key)
 
 	if value == nil {
-		if options.Required {
-			return 0, ErrConfigError(fmt.Sprintf("required key '%s' not found", key), nil)
-		}
+	if options.Required {
+		return 0, ErrConfigError(fmt.Sprintf("required key '%s' not found", key), nil)
+	}
 
-		if options.OnMissing != nil {
-			value = options.OnMissing(key)
-		} else if options.Default != nil {
-			if defaultDur, ok := options.Default.(time.Duration); ok {
-				return defaultDur, nil
-			}
+	if options.OnMissing != nil {
+		_ = options.OnMissing(key)
+	} else if options.Default != nil {
+		if defaultDur, ok := options.Default.(time.Duration); ok {
+			return defaultDur, nil
 		}
+	}
 
-		return 0, nil
+	return 0, nil
 	}
 
 	if options.Transform != nil {

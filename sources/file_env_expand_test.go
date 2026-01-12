@@ -160,17 +160,17 @@ func TestExpandEnvWithDefaults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear all env vars first
 			for k := range tt.envVars {
-				os.Unsetenv(k)
+				_ = os.Unsetenv(k)
 			}
 
 			// Set up environment
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
+				_ = os.Setenv(k, v)
 			}
 
 			defer func() {
 				for k := range tt.envVars {
-					os.Unsetenv(k)
+					_ = os.Unsetenv(k)
 				}
 			}()
 
@@ -247,19 +247,19 @@ func TestExpandEnvWithDefaults_Assignment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear environment
-			os.Unsetenv(tt.varName)
+			_ = os.Unsetenv(tt.varName)
 
 			// Set up environment
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
+				_ = os.Setenv(k, v)
 			}
 
 			defer func() {
 				for k := range tt.envVars {
-					os.Unsetenv(k)
+					_ = os.Unsetenv(k)
 				}
 
-				os.Unsetenv(tt.varName)
+				_ = os.Unsetenv(tt.varName)
 			}()
 
 			result := expandEnvWithDefaults(tt.input)
@@ -378,17 +378,17 @@ api:
 			// Clear all env vars
 			allKeys := []string{"DB_HOST", "DB_PORT", "DB_NAME", "DATABASE_DSN", "SERVER_HOST", "SERVER_PORT", "API_URL"}
 			for _, k := range allKeys {
-				os.Unsetenv(k)
+				_ = os.Unsetenv(k)
 			}
 
 			// Set up environment
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
+				_ = os.Setenv(k, v)
 			}
 
 			defer func() {
 				for k := range tt.envVars {
-					os.Unsetenv(k)
+					_ = os.Unsetenv(k)
 				}
 			}()
 
@@ -467,14 +467,14 @@ database:
 	_ = os.WriteFile(testFile, []byte(content), 0644)
 
 	// Set environment variables
-	os.Setenv("DB_HOST", "testhost")
-	os.Setenv("DB_PORT", "5432")
-	os.Setenv("DB_NAME", "testdb")
+	_ = os.Setenv("DB_HOST", "testhost")
+	_ = os.Setenv("DB_PORT", "5432")
+	_ = os.Setenv("DB_NAME", "testdb")
 
 	defer func() {
-		os.Unsetenv("DB_HOST")
-		os.Unsetenv("DB_PORT")
-		os.Unsetenv("DB_NAME")
+		_ = os.Unsetenv("DB_HOST")
+		_ = os.Unsetenv("DB_PORT")
+		_ = os.Unsetenv("DB_NAME")
 	}()
 
 	source, err := NewFileSource(testFile, FileSourceOptions{

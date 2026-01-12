@@ -348,12 +348,9 @@ func (es *EnvSource) transformKey(envKey string) string {
 
 	if es.prefix != "" {
 		if es.options.CaseSensitive {
-			if strings.HasPrefix(key, es.prefix) {
-				key = key[len(es.prefix):]
-			}
+			key = strings.TrimPrefix(key, es.prefix)
 		} else {
 			upperKey := strings.ToUpper(key)
-
 			upperPrefix := strings.ToUpper(es.prefix)
 			if strings.HasPrefix(upperKey, upperPrefix) {
 				key = key[len(es.prefix):]
@@ -362,9 +359,7 @@ func (es *EnvSource) transformKey(envKey string) string {
 	}
 
 	// Remove leading separator
-	if strings.HasPrefix(key, es.separator) {
-		key = key[len(es.separator):]
-	}
+	key = strings.TrimPrefix(key, es.separator)
 
 	// Apply key transformation if configured
 	if es.options.KeyTransform != nil {
@@ -679,7 +674,7 @@ func (es *EnvSource) matchesPattern(key, pattern string) bool {
 		}
 	}
 
-	return strings.ToUpper(key) == strings.ToUpper(pattern)
+	return strings.EqualFold(key, pattern)
 }
 
 // parseSize parses size strings like "1MB", "1GB", etc.

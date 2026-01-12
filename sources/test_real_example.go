@@ -19,7 +19,7 @@ func TestRealConfigExample_WithDefaults(t *testing.T) {
 		"AI_LLM_TIMEOUT", "AI_LLM_MAX_RETRIES", "LMSTUDIO_BASE_URL", "OLLAMA_BASE_URL",
 	}
 	for _, k := range clearEnvVars {
-		os.Unsetenv(k)
+		_ = os.Unsetenv(k)
 	}
 
 	source, err := NewFileSource("test_real_config.yaml", FileSourceOptions{
@@ -107,18 +107,18 @@ func TestRealConfigExample_WithDefaults(t *testing.T) {
 
 func TestRealConfigExample_WithEnvOverrides(t *testing.T) {
 	// Set some env vars to override defaults
-	os.Setenv("DATABASE_DSN", "postgres://admin:secret@prod-db:5432/proddb")
-	os.Setenv("DATABASE_MAX_OPEN_CONNS", "100")
-	os.Setenv("REDIS_DSN", "redis://:password@prod-redis:6379")
-	os.Setenv("AI_LLM_DEFAULT_PROVIDER", "openai")
-	os.Setenv("OLLAMA_BASE_URL", "http://ollama.prod:11434")
+	_ = os.Setenv("DATABASE_DSN", "postgres://admin:secret@prod-db:5432/proddb")
+	_ = os.Setenv("DATABASE_MAX_OPEN_CONNS", "100")
+	_ = os.Setenv("REDIS_DSN", "redis://:password@prod-redis:6379")
+	_ = os.Setenv("AI_LLM_DEFAULT_PROVIDER", "openai")
+	_ = os.Setenv("OLLAMA_BASE_URL", "http://ollama.prod:11434")
 
 	defer func() {
-		os.Unsetenv("DATABASE_DSN")
-		os.Unsetenv("DATABASE_MAX_OPEN_CONNS")
-		os.Unsetenv("REDIS_DSN")
-		os.Unsetenv("AI_LLM_DEFAULT_PROVIDER")
-		os.Unsetenv("OLLAMA_BASE_URL")
+		_ = os.Unsetenv("DATABASE_DSN")
+		_ = os.Unsetenv("DATABASE_MAX_OPEN_CONNS")
+		_ = os.Unsetenv("REDIS_DSN")
+		_ = os.Unsetenv("AI_LLM_DEFAULT_PROVIDER")
+		_ = os.Unsetenv("OLLAMA_BASE_URL")
 	}()
 
 	source, err := NewFileSource("test_real_config.yaml", FileSourceOptions{
@@ -196,14 +196,14 @@ func TestRealConfigExample_WithEnvOverrides(t *testing.T) {
 
 func TestRealConfigExample_MixedDefaults(t *testing.T) {
 	// Set only SOME env vars - others should use defaults
-	os.Setenv("DATABASE_DSN", "postgres://user:pass@custom-db:5432/mydb")
+	_ = os.Setenv("DATABASE_DSN", "postgres://user:pass@custom-db:5432/mydb")
 	// DATABASE_MAX_OPEN_CONNS not set - should use default 25
-	os.Setenv("AI_LLM_DEFAULT_PROVIDER", "ollama")
+	_ = os.Setenv("AI_LLM_DEFAULT_PROVIDER", "ollama")
 	// OLLAMA_BASE_URL not set - should use default http://localhost:11434
 
 	defer func() {
-		os.Unsetenv("DATABASE_DSN")
-		os.Unsetenv("AI_LLM_DEFAULT_PROVIDER")
+		_ = os.Unsetenv("DATABASE_DSN")
+		_ = os.Unsetenv("AI_LLM_DEFAULT_PROVIDER")
 	}()
 
 	source, err := NewFileSource("test_real_config.yaml", FileSourceOptions{
@@ -269,18 +269,18 @@ func ExampleFileSource_expandEnvWithDefaults() {
 	fmt.Println("Without env var:", result1)
 
 	// With environment variable set
-	os.Setenv("DATABASE_DSN", "postgres://prod:5432/proddb")
+	_ = os.Setenv("DATABASE_DSN", "postgres://prod:5432/proddb")
 
 	result2 := expandEnvWithDefaults("${DATABASE_DSN:-postgres://localhost:5432/mydb}")
 	fmt.Println("With env var:", result2)
-	os.Unsetenv("DATABASE_DSN")
+	_ = os.Unsetenv("DATABASE_DSN")
 
 	// Complex example with multiple variables
-	os.Setenv("DB_HOST", "prod-server")
+	_ = os.Setenv("DB_HOST", "prod-server")
 
 	result3 := expandEnvWithDefaults("postgres://${DB_USER:-postgres}:${DB_PASS:-postgres}@${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-mydb}")
 	fmt.Println("Complex example:", result3)
-	os.Unsetenv("DB_HOST")
+	_ = os.Unsetenv("DB_HOST")
 
 	// Output:
 	// Without env var: postgres://localhost:5432/mydb

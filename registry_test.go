@@ -292,9 +292,9 @@ func TestSourceRegistry_GetAllSources(t *testing.T) {
 	source2 := newMockSource("source2", 1)
 	source3 := newMockSource("source3", 2)
 
-	registry.RegisterSource(source1)
-	registry.RegisterSource(source2)
-	registry.RegisterSource(source3)
+	_ = registry.RegisterSource(source1)
+	_ = registry.RegisterSource(source2)
+	_ = registry.RegisterSource(source3)
 
 	sources := registry.GetSources()
 
@@ -347,9 +347,9 @@ func TestSourceRegistry_GetSourcesByType(t *testing.T) {
 	source3 := newMockSource("mock3", 3)
 	source3.metadata.Type = "typeA"
 
-	registry.RegisterSource(source1)
-	registry.RegisterSource(source2)
-	registry.RegisterSource(source3)
+	_ = registry.RegisterSource(source1)
+	_ = registry.RegisterSource(source2)
+	_ = registry.RegisterSource(source3)
 
 	t.Run("get sources by type", func(t *testing.T) {
 		typeASources := registry.GetSourcesByType("typeA")
@@ -386,9 +386,9 @@ func TestSourceRegistry_GetWatchableSources(t *testing.T) {
 	nonWatchable.isWatchable = false
 	nonWatchable.metadata.IsWatching = false
 
-	registry.RegisterSource(watchable1)
-	registry.RegisterSource(watchable2)
-	registry.RegisterSource(nonWatchable)
+	_ = registry.RegisterSource(watchable1)
+	_ = registry.RegisterSource(watchable2)
+	_ = registry.RegisterSource(nonWatchable)
 
 	watchable := registry.GetWatchableSources()
 
@@ -414,7 +414,7 @@ func TestSourceRegistry_GetMetadata(t *testing.T) {
 	source.metadata.Type = "test_type"
 	source.metadata.IsWatching = true
 
-	registry.RegisterSource(source)
+	_ = registry.RegisterSource(source)
 
 	t.Run("get existing source metadata", func(t *testing.T) {
 		metadata, err := registry.GetSourceMetadata("test_source")
@@ -453,8 +453,8 @@ func TestSourceRegistry_GetAllMetadata(t *testing.T) {
 	source1 := newMockSource("source1", 1)
 	source2 := newMockSource("source2", 2)
 
-	registry.RegisterSource(source1)
-	registry.RegisterSource(source2)
+	_ = registry.RegisterSource(source1)
+	_ = registry.RegisterSource(source2)
 
 	metadata := registry.GetAllMetadata()
 
@@ -481,7 +481,7 @@ func TestSourceRegistry_HasSource(t *testing.T) {
 	registry := NewSourceRegistry(nil).(*SourceRegistryImpl)
 
 	source := newMockSource("existing", 1)
-	registry.RegisterSource(source)
+	_ = registry.RegisterSource(source)
 
 	tests := []struct {
 		name       string
@@ -514,8 +514,8 @@ func TestSourceRegistry_GetSourceCount(t *testing.T) {
 	})
 
 	t.Run("with sources", func(t *testing.T) {
-		registry.RegisterSource(newMockSource("source1", 1))
-		registry.RegisterSource(newMockSource("source2", 2))
+		_ = registry.RegisterSource(newMockSource("source1", 1))
+		_ = registry.RegisterSource(newMockSource("source2", 2))
 
 		count := len(registry.GetSources())
 		if count != 2 {
@@ -543,8 +543,8 @@ func TestSourceRegistry_GetPriority(t *testing.T) {
 func TestSourceRegistry_Clear(t *testing.T) {
 	registry := NewSourceRegistry(nil).(*SourceRegistryImpl)
 
-	registry.RegisterSource(newMockSource("source1", 1))
-	registry.RegisterSource(newMockSource("source2", 2))
+	_ = registry.RegisterSource(newMockSource("source1", 1))
+	_ = registry.RegisterSource(newMockSource("source2", 2))
 
 	if len(registry.GetSources()) != 2 {
 		t.Fatalf("Setup failed, expected 2 sources")
@@ -659,8 +659,8 @@ func TestSourceRegistry_EdgeCases(t *testing.T) {
 		source1 := newMockSource("first", 5)
 		source2 := newMockSource("second", 5)
 
-		registry.RegisterSource(source1)
-		registry.RegisterSource(source2)
+		_ = registry.RegisterSource(source1)
+		_ = registry.RegisterSource(source2)
 
 		sources := registry.GetSources()
 		if len(sources) != 2 {
@@ -687,7 +687,7 @@ func TestSourceRegistry_EdgeCases(t *testing.T) {
 		registry := NewSourceRegistry(nil)
 		source := newMockSource("updatable", 1)
 
-		registry.RegisterSource(source)
+		_ = registry.RegisterSource(source)
 
 		// Change the source's metadata after registration
 		source.metadata.Type = "updated_type"
@@ -711,11 +711,11 @@ func TestSourceRegistry_SourceOrdering(t *testing.T) {
 	registry := NewSourceRegistry(nil)
 
 	// Register sources in random order
-	registry.RegisterSource(newMockSource("medium", 50))
-	registry.RegisterSource(newMockSource("lowest", 10))
-	registry.RegisterSource(newMockSource("highest", 100))
-	registry.RegisterSource(newMockSource("low", 20))
-	registry.RegisterSource(newMockSource("high", 80))
+	_ = registry.RegisterSource(newMockSource("medium", 50))
+	_ = registry.RegisterSource(newMockSource("lowest", 10))
+	_ = registry.RegisterSource(newMockSource("highest", 100))
+	_ = registry.RegisterSource(newMockSource("low", 20))
+	_ = registry.RegisterSource(newMockSource("high", 80))
 
 	sources := registry.GetSources()
 
@@ -748,10 +748,10 @@ func TestSourceRegistry_TypeFiltering(t *testing.T) {
 	source4 := newMockSource("remote1", 4)
 	source4.metadata.Type = "remote"
 
-	registry.RegisterSource(source1)
-	registry.RegisterSource(source2)
-	registry.RegisterSource(source3)
-	registry.RegisterSource(source4)
+	_ = registry.RegisterSource(source1)
+	_ = registry.RegisterSource(source2)
+	_ = registry.RegisterSource(source3)
+	_ = registry.RegisterSource(source4)
 
 	t.Run("filter file type", func(t *testing.T) {
 		fileSources := registry.GetSourcesByType("file")
@@ -785,7 +785,7 @@ func TestSourceRegistry_SortingStability(t *testing.T) {
 	// Register sources with same priority in specific order
 	for i := range 5 {
 		source := newMockSource(string(rune('A'+i)), 10)
-		registry.RegisterSource(source)
+		_ = registry.RegisterSource(source)
 	}
 
 	sources1 := registry.GetSources()
@@ -808,7 +808,7 @@ func TestSourceRegistry_MetadataConsistency(t *testing.T) {
 	source.metadata.Type = "test_type"
 	source.metadata.IsWatching = true
 
-	registry.RegisterSource(source)
+	_ = registry.RegisterSource(source)
 
 	// Get metadata through different methods
 	metadata1, _ := registry.GetSourceMetadata("test")

@@ -16,7 +16,7 @@ func TestDiscoverAndLoadConfigs_SingleApp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create base config
 	baseConfig := `
@@ -95,7 +95,7 @@ func TestDiscoverAndLoadConfigs_Monorepo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create apps directory to simulate monorepo
 	appsDir := filepath.Join(tmpDir, "apps", "test-service")
@@ -242,7 +242,7 @@ func TestDiscoverAndLoadConfigs_RequiredConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cfg := DefaultAutoDiscoveryConfig()
 	cfg.SearchPaths = []string{tmpDir}
@@ -262,7 +262,7 @@ func TestDiscoverAndLoadConfigs_HierarchicalSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create nested directory structure
 	deepDir := filepath.Join(tmpDir, "a", "b", "c")
@@ -310,7 +310,7 @@ func TestAutoLoadConfy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Save current directory and change to temp dir
 	oldDir, _ := os.Getwd()
@@ -346,7 +346,7 @@ func TestLoadConfigFromPaths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	basePath := filepath.Join(tmpDir, "base.yaml")
 	localPath := filepath.Join(tmpDir, "local.yaml")
@@ -436,7 +436,7 @@ func TestConfigMergePrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create app directory
 	appDir := filepath.Join(tmpDir, "apps", "testapp")
@@ -517,7 +517,7 @@ apps:
 // Benchmark tests.
 func BenchmarkDiscoverAndLoadConfigs(b *testing.B) {
 	tmpDir, _ := os.MkdirTemp("", "forge-bench-*")
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	config := `
 app:

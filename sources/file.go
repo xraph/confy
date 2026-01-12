@@ -293,7 +293,7 @@ func (fs *FileSource) StopWatch() error {
 	}
 
 	if fs.watcher != nil {
-		if err := fs._ = watcher.Close(); err != nil {
+		if err := fs.watcher.Close(); err != nil {
 			if fs.logger != nil {
 				fs.logger.Warn("error closing file watcher",
 					logger.String("path", fs.path),

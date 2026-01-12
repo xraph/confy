@@ -125,7 +125,7 @@ func TestTypeConverters_IntegerTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m.data[tt.key] = tt.value
+			m.Set(tt.key, tt.value)
 
 			if got := m.GetInt8(tt.key); got != tt.getInt8 {
 				t.Errorf("GetInt8() = %v, want %v", got, tt.getInt8)
@@ -201,7 +201,7 @@ func TestTypeConverters_FloatTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m.data[tt.key] = tt.value
+			m.Set(tt.key, tt.value)
 
 			if got := m.GetFloat32(tt.key); got != tt.getFloat32 {
 				t.Errorf("GetFloat32() = %v, want %v", got, tt.getFloat32)

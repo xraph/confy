@@ -534,58 +534,6 @@ func (w *Watcher) calculateChecksum(data map[string]any) string {
 	return fmt.Sprintf("%x", fmt.Sprintf("%v", data))
 }
 
-// detectChanges detects specific changes between old and new configuration.
-func (w *Watcher) detectChanges(oldData, newData map[string]any) []ConfigChange {
-	var changes []ConfigChange
-
-	timestamp := time.Now()
-
-	// Check for added/modified keys
-	for key, newValue := range newData {
-		if oldValue, exists := oldData[key]; exists {
-			// Key exists - check if value changed
-			if !w.deepEqual(oldValue, newValue) {
-				changes = append(changes, ConfigChange{
-					Type:      ChangeTypeUpdate,
-					Key:       key,
-					OldValue:  oldValue,
-					NewValue:  newValue,
-					Timestamp: timestamp,
-				})
-			}
-		} else {
-			// New key
-			changes = append(changes, ConfigChange{
-				Type:      ChangeTypeSet,
-				Key:       key,
-				NewValue:  newValue,
-				Timestamp: timestamp,
-			})
-		}
-	}
-
-	// Check for deleted keys
-	for key, oldValue := range oldData {
-		if _, exists := newData[key]; !exists {
-			changes = append(changes, ConfigChange{
-				Type:      ChangeTypeDelete,
-				Key:       key,
-				OldValue:  oldValue,
-				Timestamp: timestamp,
-			})
-		}
-	}
-
-	return changes
-}
-
-// deepEqual compares two values for deep equality.
-func (w *Watcher) deepEqual(a, b any) bool {
-	// Simple deep equality check
-	// In production, you might want a more sophisticated comparison
-	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
-}
-
 // WatchStats contains statistics about a watched source.
 type WatchStats struct {
 	SourceName  string        `json:"source_name"`

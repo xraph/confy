@@ -144,7 +144,7 @@ list:
 
 	ctx := context.Background()
 
-	data, err := _ = source.Load(ctx)
+	data, err := source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -211,7 +211,7 @@ func TestFileSource_Load_JSON(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := _ = source.Load(ctx)
+	data, err := source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -257,7 +257,7 @@ list = ["item1", "item2", "item3"]
 
 	ctx := context.Background()
 
-	data, err := _ = source.Load(ctx)
+	data, err := source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -293,10 +293,10 @@ func TestFileSource_Get(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	_ = source.Load(ctx)
+	_, _ = source.Load(ctx)
 
 	t.Run("get existing key", func(t *testing.T) {
-		data, err := _ = source.Load(ctx)
+		data, err := source.Load(ctx)
 		if err != nil {
 			t.Fatalf("Load() error = %v", err)
 		}
@@ -312,7 +312,7 @@ func TestFileSource_Get(t *testing.T) {
 	})
 
 	t.Run("get non-existent key", func(t *testing.T) {
-		data, err := _ = source.Load(ctx)
+		data, err := source.Load(ctx)
 		if err != nil {
 			t.Fatalf("Load() error = %v", err)
 		}
@@ -355,7 +355,7 @@ func TestFileSource_Watch(t *testing.T) {
 	defer cancel()
 
 	// Load initial data
-	_ = source.Load(ctx)
+	_, _ = source.Load(ctx)
 
 	changeDetected := make(chan bool, 1)
 	changes := make(chan struct{})
@@ -376,7 +376,7 @@ func TestFileSource_Watch(t *testing.T) {
 	// Modify file
 	newContent := []byte("key: modified\n")
 
-	err = _ = os.WriteFile(testFile, newContent, 0644)
+	err = os.WriteFile(testFile, newContent, 0644)
 	if err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
@@ -486,7 +486,7 @@ func TestFileSource_Load_NonExistentFile(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = _ = source.Load(ctx)
+	_, err = source.Load(ctx)
 	if err == nil {
 		t.Error("Load() should return error for non-existent file")
 	}
@@ -507,7 +507,7 @@ func TestFileSource_Load_InvalidYAML(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = _ = source.Load(ctx)
+	_, err = source.Load(ctx)
 	if err == nil {
 		t.Error("Load() should return error for invalid YAML")
 	}
@@ -528,7 +528,7 @@ func TestFileSource_Load_InvalidJSON(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = _ = source.Load(ctx)
+	_, err = source.Load(ctx)
 	if err == nil {
 		t.Error("Load() should return error for invalid JSON")
 	}
@@ -547,7 +547,7 @@ func TestFileSource_Load_UnreadableFile(t *testing.T) {
 
 	// Make file unreadable
 	_ = os.Chmod(testFile, 0000)
-	defer _ = os.Chmod(testFile, 0644)
+	defer func() { _ = os.Chmod(testFile, 0644) }()
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -556,7 +556,7 @@ func TestFileSource_Load_UnreadableFile(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = _ = source.Load(ctx)
+	_, err = source.Load(ctx)
 	if err == nil {
 		t.Error("Load() should return error for unreadable file")
 	}
@@ -583,7 +583,7 @@ func TestFileSource_Backup(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = _ = source.Load(ctx)
+	_, err = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -617,7 +617,7 @@ func TestFileSource_Lifecycle(t *testing.T) {
 	ctx := context.Background()
 
 	// Load
-	_, err = _ = source.Load(ctx)
+	_, err = source.Load(ctx)
 	if err != nil {
 		t.Errorf("Load() error = %v", err)
 	}
@@ -728,7 +728,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := _ = source.Load(ctx)
+		data, err := source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -752,7 +752,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := _ = source.Load(ctx)
+		data, err := source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -781,7 +781,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := _ = source.Load(ctx)
+		data, err := source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -811,7 +811,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := _ = source.Load(ctx)
+		data, err := source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -835,7 +835,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := _ = source.Load(ctx)
+		data, err := source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -928,7 +928,7 @@ func TestFileSource_FormatDetection(t *testing.T) {
 
 			ctx := context.Background()
 
-			data, err := _ = source.Load(ctx)
+			data, err := source.Load(ctx)
 			if err != nil {
 				t.Errorf("Load() error = %v", err)
 			}
@@ -963,7 +963,7 @@ func TestFileSource_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err = _ = source.Load(ctx)
+	_, err = source.Load(ctx)
 
 	// Should either complete successfully or handle cancellation gracefully
 	if err != nil && !errors.Is(err, context.Canceled) {
@@ -991,7 +991,7 @@ func TestFileSource_Reload(t *testing.T) {
 	ctx := context.Background()
 
 	// First load
-	data1, err := _ = source.Load(ctx)
+	data1, err := source.Load(ctx)
 	if err != nil {
 		t.Fatalf("First Load() error = %v", err)
 	}
@@ -1008,7 +1008,7 @@ func TestFileSource_Reload(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Second load
-	data2, err := _ = source.Load(ctx)
+	data2, err := source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Second Load() error = %v", err)
 	}
@@ -1033,7 +1033,7 @@ func TestFileSource_Symlink(t *testing.T) {
 
 	// Create target file
 	content := []byte("key: value\n")
-	os.WriteFile(targetFile, content, 0644)
+	_ = os.WriteFile(targetFile, content, 0644)
 
 	// Create symlink
 	err := os.Symlink(targetFile, symlinkFile)
@@ -1048,7 +1048,7 @@ func TestFileSource_Symlink(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := _ = source.Load(ctx)
+	data, err := source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}

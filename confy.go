@@ -1694,6 +1694,11 @@ func (c *ConfyImpl) bindValue(value any, target any) error {
 func (c *ConfyImpl) bindMapToStruct(mapValue reflect.Value, structValue reflect.Value) error {
 	structType := structValue.Type()
 
+	// First apply struct tag defaults
+	if err := c.applyStructDefaults(structValue); err != nil {
+		return err
+	}
+
 	for i := 0; i < structValue.NumField(); i++ {
 		field := structValue.Field(i)
 		fieldType := structType.Field(i)
@@ -1711,6 +1716,10 @@ func (c *ConfyImpl) bindMapToStruct(mapValue reflect.Value, structValue reflect.
 		mapVal := mapValue.MapIndex(mapKey)
 
 		if !mapVal.IsValid() {
+			// Check if field is required
+			if fieldType.Tag.Get("required") == "true" {
+				return ErrConfigError(fmt.Sprintf("required field '%s' is missing", fieldName), nil)
+			}
 			continue
 		}
 
@@ -1749,8 +1758,15 @@ func (c *ConfyImpl) setFieldValue(field reflect.Value, value reflect.Value) erro
 	case reflect.String:
 		field.SetString(c.converter.ToString(valueInterface))
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if intVal, err := c.converter.ToInt64(valueInterface); err == nil {
-			field.SetInt(intVal)
+		// Handle time.Duration specially since it's an int64
+		if field.Type() == reflect.TypeOf(time.Duration(0)) {
+			if durVal, err := c.converter.ToDuration(valueInterface); err == nil {
+				field.SetInt(int64(durVal))
+			}
+		} else {
+			if intVal, err := c.converter.ToInt64(valueInterface); err == nil {
+				field.SetInt(intVal)
+			}
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if uintVal, err := c.converter.ToUint64(valueInterface); err == nil {
@@ -2178,75 +2194,6 @@ func (c *ConfyImpl) setDefaultValue(field reflect.Value, defaultTag string, fiel
 
 	default:
 		return fmt.Errorf("unsupported default type: %v", field.Kind())
-	}
-
-	return nil
-}
-
-func (c *ConfyImpl) setFieldValueWithOptions(field reflect.Value, value reflect.Value, options configcore.BindOptions) error {
-	if !value.IsValid() {
-		return nil
-	}
-
-	valueInterface := value.Interface()
-
-	switch field.Kind() {
-	case reflect.String:
-		field.SetString(c.converter.ToString(valueInterface))
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if intVal, err := c.converter.ToInt64(valueInterface); err == nil {
-			field.SetInt(intVal)
-		} else if !options.ErrorOnMissing {
-			return nil
-		} else {
-			return err
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if uintVal, err := c.converter.ToUint64(valueInterface); err == nil {
-			field.SetUint(uintVal)
-		} else if !options.ErrorOnMissing {
-			return nil
-		} else {
-			return err
-		}
-	case reflect.Float32, reflect.Float64:
-		if floatVal, err := c.converter.ToFloat64(valueInterface); err == nil {
-			field.SetFloat(floatVal)
-		} else if !options.ErrorOnMissing {
-			return nil
-		} else {
-			return err
-		}
-	case reflect.Bool:
-		if boolVal, err := c.converter.ToBool(valueInterface); err == nil {
-			field.SetBool(boolVal)
-		} else if !options.ErrorOnMissing {
-			return nil
-		} else {
-			return err
-		}
-	case reflect.Slice:
-		if slice, ok := valueInterface.([]any); ok {
-			return c.setSliceValue(field, slice)
-		}
-	case reflect.Map:
-		if mapVal, ok := valueInterface.(map[string]any); ok {
-			return c.setMapValue(field, mapVal)
-		}
-	case reflect.Struct:
-		if mapVal, ok := valueInterface.(map[string]any); ok {
-			if options.DeepMerge && !field.IsZero() {
-				return c.mergeStructValue(field, mapVal, options)
-			}
-
-			return c.bindMapToStructWithOptions(reflect.ValueOf(mapVal), field, options)
-		}
-	case reflect.Ptr:
-		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
-		}
-
-		return c.setFieldValueWithOptions(field.Elem(), value, options)
 	}
 
 	return nil

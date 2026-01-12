@@ -574,7 +574,7 @@ func (t *EnvVarTransformer) Transform(data map[string]any) (map[string]any, erro
 
 // SecretsTransformer transforms secret references.
 type SecretsTransformer struct {
-	secretsManager configcore.SecretsManager
+	_ configcore.SecretsManager // reserved for future use
 }
 
 func (t *SecretsTransformer) Name() string  { return "secrets" }
