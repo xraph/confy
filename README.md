@@ -135,6 +135,109 @@ source, err := sources.NewFileSource("config.yaml", sources.FileSourceOptions{
 })
 ```
 
+## Variable Resolution
+
+confy supports environment variable expansion in YAML files with bash-style default value syntax.
+
+### Basic expansion
+
+```yaml
+# config.yaml
+database:
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+```
+
+```bash
+export DB_HOST=localhost
+export DB_PORT=5432
+```
+
+### Default values
+
+Use bash-style syntax for default values when environment variables aren't set:
+
+```yaml
+database:
+  # Use default if DB_HOST is unset or empty
+  host: ${DB_HOST:-localhost}
+  
+  # Use default only if DB_PORT is unset (not if empty)
+  port: ${DB_PORT-5432}
+  
+  # Full connection string with multiple defaults
+  dsn: postgres://${DB_USER:-postgres}:${DB_PASS:-postgres}@${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-mydb}
+```
+
+**Syntax variants:**
+
+| Syntax | Behavior |
+|--------|----------|
+| `${VAR}` or `$VAR` | Standard expansion, empty string if not set |
+| `${VAR:-default}` | Use `default` if VAR is unset **or empty** |
+| `${VAR-default}` | Use `default` only if VAR is **unset** (not if empty) |
+| `${VAR:=default}` | Assign and use `default` if VAR is unset or empty |
+| `${VAR=default}` | Assign and use `default` only if VAR is unset |
+
+**Example with some variables set:**
+
+```yaml
+server:
+  address: ${SERVER_HOST:-0.0.0.0}:${SERVER_PORT:-8080}
+  timeout: ${TIMEOUT:-30s}
+```
+
+```bash
+export SERVER_PORT=3000
+# SERVER_HOST and TIMEOUT will use defaults
+# Result: address = "0.0.0.0:3000", timeout = "30s"
+```
+
+### Complex examples
+
+**Database connection string:**
+
+```yaml
+database:
+  dsn: ${DATABASE_DSN:-postgres://postgres:postgres@localhost:5432/testdb?sslmode=disable}
+```
+
+This allows you to either:
+- Set `DATABASE_DSN` to override the entire connection string, or
+- Use individual environment variables with defaults for each component
+
+**Service URLs:**
+
+```yaml
+services:
+  auth: ${AUTH_URL:-http://localhost:8080}
+  api: ${API_URL:-http://localhost:3000}
+  cache: ${REDIS_URL:-redis://localhost:6379/0}
+```
+
+### Secret references
+
+confy can resolve secret references from external secret managers (AWS Secrets Manager, HashiCorp Vault, etc.):
+
+```yaml
+database:
+  password: ${secret:db/production/password}
+  api_key: ${secret:services/stripe/api_key}
+```
+
+Enable secret expansion in your file source:
+
+```go
+source, err := sources.NewFileSource("config.yaml", sources.FileSourceOptions{
+    ExpandSecrets: true,
+})
+
+// Provide a secrets manager implementation
+cfg.SetSecretsManager(mySecretsManager)
+```
+
+Secret references use the format `${secret:key}` where `key` is passed to your `SecretsManager` implementation.
+
 ### Consul source
 
 ```go
