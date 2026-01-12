@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -332,6 +333,9 @@ func TestFileSource_Watch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping watch test in short mode")
 	}
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping watch test on Windows due to timing/platform differences")
+	}
 
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "config.yaml")
@@ -535,6 +539,9 @@ func TestFileSource_Load_InvalidJSON(t *testing.T) {
 }
 
 func TestFileSource_Load_UnreadableFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping Unix permission test on Windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("Skipping test when running as root")
 	}
@@ -545,7 +552,7 @@ func TestFileSource_Load_UnreadableFile(t *testing.T) {
 	content := []byte("key: value\n")
 	_ = os.WriteFile(testFile, content, 0644)
 
-	// Make file unreadable
+	// Make file unreadable (Unix-only)
 	_ = os.Chmod(testFile, 0000)
 	defer func() { _ = os.Chmod(testFile, 0644) }()
 
