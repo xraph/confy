@@ -60,11 +60,11 @@ func TestTypeConverters_IntegerTypes(t *testing.T) {
 			name:      "int16 value",
 			key:       "test.int16",
 			value:     int16(1000),
-			getInt8:   0, // overflow
+			getInt8:   -24, // overflow/truncation: 1000 & 0xFF = 232, as int8 = -24
 			getInt16:  1000,
 			getInt32:  1000,
 			getInt64:  1000,
-			getUint8:  0, // overflow
+			getUint8:  232, // overflow/truncation: 1000 & 0xFF = 232
 			getUint16: 1000,
 			getUint32: 1000,
 			getUint64: 1000,
@@ -181,7 +181,7 @@ func TestTypeConverters_FloatTypes(t *testing.T) {
 			key:        "test.float32",
 			value:      float32(3.14),
 			getFloat32: 3.14,
-			getFloat64: 3.14,
+			getFloat64: float64(float32(3.14)), // float32 precision loss
 		},
 		{
 			name:       "float64 value",

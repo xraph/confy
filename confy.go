@@ -2050,9 +2050,10 @@ func (c *ConfyImpl) findMapValueIgnoreCase(mapValue reflect.Value, fieldName str
 // deepMergeValues deeply merges two values with proper precedence
 // configValue (from file) takes precedence over defaultValue.
 func (c *ConfyImpl) deepMergeValues(defaultValue, configValue any) any {
-	// If config value is nil, use default
+	// Config value always takes precedence (even if nil)
+	// This matches the semantic of "new value overrides old value"
 	if configValue == nil {
-		return defaultValue
+		return nil
 	}
 
 	// If default is nil, use config

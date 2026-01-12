@@ -276,6 +276,8 @@ func (tc *TypeConverter) ToString(value any) string {
 	switch v := value.(type) {
 	case string:
 		return v
+	case []byte:
+		return string(v)
 	case int, int8, int16, int32, int64:
 		return fmt.Sprintf("%d", v)
 	case uint, uint8, uint16, uint32, uint64:
@@ -381,6 +383,15 @@ func (tc *TypeConverter) ToStringSlice(value any) ([]string, error) {
 		}
 		return result, nil
 	case string:
+		// Try to split on commas first for comma-separated lists
+		if strings.Contains(v, ",") {
+			parts := strings.Split(v, ",")
+			result := make([]string, len(parts))
+			for i, part := range parts {
+				result[i] = strings.TrimSpace(part)
+			}
+			return result, nil
+		}
 		// Single string becomes single-element slice
 		return []string{v}, nil
 	default:
@@ -551,29 +562,33 @@ func (tc *TypeConverter) parseSizeString(s string) (uint64, error) {
 		return 0, fmt.Errorf("empty size string")
 	}
 
-	units := map[string]uint64{
-		"B":  1,
-		"KB": 1024,
-		"MB": 1024 * 1024,
-		"GB": 1024 * 1024 * 1024,
-		"TB": 1024 * 1024 * 1024 * 1024,
-		"PB": 1024 * 1024 * 1024 * 1024 * 1024,
-		"K":  1000,
-		"M":  1000 * 1000,
-		"G":  1000 * 1000 * 1000,
-		"T":  1000 * 1000 * 1000 * 1000,
-		"P":  1000 * 1000 * 1000 * 1000 * 1000,
+	// Order matters! Check longer units first to avoid "GB" matching "B"
+	units := []struct {
+		suffix     string
+		multiplier uint64
+	}{
+		{"PB", 1024 * 1024 * 1024 * 1024 * 1024},
+		{"TB", 1024 * 1024 * 1024 * 1024},
+		{"GB", 1024 * 1024 * 1024},
+		{"MB", 1024 * 1024},
+		{"KB", 1024},
+		{"P", 1000 * 1000 * 1000 * 1000 * 1000},
+		{"T", 1000 * 1000 * 1000 * 1000},
+		{"G", 1000 * 1000 * 1000},
+		{"M", 1000 * 1000},
+		{"K", 1000},
+		{"B", 1},
 	}
 
-	for unit, multiplier := range units {
-		if strings.HasSuffix(s, unit) {
-			numberStr := strings.TrimSuffix(s, unit)
+	for _, unit := range units {
+		if strings.HasSuffix(s, unit.suffix) {
+			numberStr := strings.TrimSuffix(s, unit.suffix)
 			numberStr = strings.TrimSpace(numberStr)
 			number, err := strconv.ParseFloat(numberStr, 64)
 			if err != nil {
 				return 0, fmt.Errorf("invalid size format %q: %w", s, err)
 			}
-			return uint64(number * float64(multiplier)), nil
+			return uint64(number * float64(unit.multiplier)), nil
 		}
 	}
 
