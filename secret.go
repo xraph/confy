@@ -919,12 +919,14 @@ func (fsp *FileSecretProvider) GetSecret(ctx context.Context, key string) (strin
 		return value, nil
 	}
 
-	// Try to load from file
-	filePath := fmt.Sprintf("%s/%s", fsp.basePath, key)
-	// nolint:gosec // G304: Path is validated and controlled by application configuration
-	data, err := os.ReadFile(filePath)
+	// Try to load from file using scoped file access to prevent directory traversal (Go 1.24+)
+	root, err := os.OpenRoot(fsp.basePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read secret file %s: %w", filePath, err)
+		return "", fmt.Errorf("failed to open secret directory %s: %w", fsp.basePath, err)
+	}
+	data, err := root.ReadFile(key)
+	if err != nil {
+		return "", fmt.Errorf("failed to read secret file %s: %w", key, err)
 	}
 
 	value := strings.TrimSpace(string(data))
@@ -937,9 +939,13 @@ func (fsp *FileSecretProvider) SetSecret(ctx context.Context, key, value string)
 	fsp.mu.Lock()
 	defer fsp.mu.Unlock()
 
-	filePath := fmt.Sprintf("%s/%s", fsp.basePath, key)
-	if err := os.WriteFile(filePath, []byte(value), 0600); err != nil {
-		return fmt.Errorf("failed to write secret file %s: %w", filePath, err)
+	// Use os.Root for secure file access to prevent directory traversal (Go 1.24+)
+	root, err := os.OpenRoot(fsp.basePath)
+	if err != nil {
+		return fmt.Errorf("failed to open secret directory %s: %w", fsp.basePath, err)
+	}
+	if err := root.WriteFile(key, []byte(value), 0600); err != nil {
+		return fmt.Errorf("failed to write secret file %s: %w", key, err)
 	}
 
 	fsp.secrets[key] = value

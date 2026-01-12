@@ -182,9 +182,20 @@ func (fs *FileSource) Load(ctx context.Context) (map[string]any, error) {
 	fs.lastModTime = stat.ModTime()
 	fs.mu.Unlock()
 
-	// Read file content
-	// nolint:gosec // G304: Path is validated and controlled by application configuration
-	content, err := os.ReadFile(path)
+	// Resolve symlinks to get the actual file path
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return nil, configcore.ErrConfigError("failed to resolve symlinks for "+path, err)
+	}
+
+	// Read file content using scoped file access to prevent directory traversal (Go 1.24+)
+	dir := filepath.Dir(resolvedPath)
+	filename := filepath.Base(resolvedPath)
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, configcore.ErrConfigError("failed to open root directory "+dir, err)
+	}
+	content, err := root.ReadFile(filename)
 	if err != nil {
 		return nil, configcore.ErrConfigError("failed to read file "+path, err)
 	}

@@ -468,7 +468,7 @@ func (p *JSONProcessor) isValidIdentifier(s string) bool {
 
 	// First character must be letter, underscore, or dollar sign
 	first := s[0]
-	if !((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_' || first == '$') {
+	if (first < 'a' || first > 'z') && (first < 'A' || first > 'Z') && first != '_' && first != '$' {
 		return false
 	}
 
@@ -578,7 +578,7 @@ func (p *JSONProcessor) Compact(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return []byte(buf.String()), nil
+	return buf.Bytes(), nil
 }
 
 // ValidateJSONSyntax validates JSON syntax without full parsing.
