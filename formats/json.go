@@ -475,8 +475,8 @@ func (p *JSONProcessor) isValidIdentifier(s string) bool {
 	// Subsequent characters can be letters, digits, underscores, or dollar signs
 	for i := 1; i < len(s); i++ {
 		char := s[i]
-		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
-			(char >= '0' && char <= '9') || char == '_' || char == '$') {
+		if (char < 'a' || char > 'z') && (char < 'A' || char > 'Z') &&
+			(char < '0' || char > '9') && char != '_' && char != '$' {
 			return false
 		}
 	}

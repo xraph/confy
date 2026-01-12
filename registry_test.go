@@ -226,7 +226,7 @@ func TestSourceRegistry_Unregister(t *testing.T) {
 	registry := NewSourceRegistry(nil)
 
 	source := newMockSource("source1", 1)
-	registry.RegisterSource(source)
+	_ = registry.RegisterSource(source)
 
 	t.Run("unregister existing source", func(t *testing.T) {
 		err := registry.UnregisterSource("source1")
@@ -256,7 +256,7 @@ func TestSourceRegistry_GetSource(t *testing.T) {
 	registry := NewSourceRegistry(nil)
 
 	source := newMockSource("test_source", 1)
-	registry.RegisterSource(source)
+	_ = registry.RegisterSource(source)
 
 	t.Run("get existing source", func(t *testing.T) {
 		retrieved, err := registry.GetSource("test_source")
@@ -550,7 +550,7 @@ func TestSourceRegistry_Clear(t *testing.T) {
 		t.Fatalf("Setup failed, expected 2 sources")
 	}
 
-	registry.Clear()
+	_ = registry.Clear()
 
 	if len(registry.GetSources()) != 0 {
 		t.Errorf("After Clear(), GetSourceCount() = %d, want 0", len(registry.GetSources()))

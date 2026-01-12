@@ -102,8 +102,8 @@ func TestEnvSource_Load(t *testing.T) {
 	}
 
 	for key, value := range testVars {
-		os.Setenv(key, value)
-		defer os.Unsetenv(key)
+		_ = os.Setenv(key, value)
+		defer func() { _ = os.Unsetenv(key)
 	}
 
 	source, _ := NewEnvSource("TEST_", EnvSourceOptions{
@@ -112,7 +112,7 @@ func TestEnvSource_Load(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v, want nil", err)
 	}
@@ -138,13 +138,13 @@ func TestEnvSource_Load(t *testing.T) {
 func TestEnvSource_Load_WithoutPrefix(t *testing.T) {
 	t.Setenv("NO_PREFIX_VAR", "test_value")
 
-	defer os.Unsetenv("NO_PREFIX_VAR")
+	defer func() { _ = os.Unsetenv("NO_PREFIX_VAR")
 
 	source, _ := NewEnvSource("", EnvSourceOptions{})
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -172,8 +172,8 @@ func TestEnvSource_Load_WithSeparator(t *testing.T) {
 	t.Setenv("APP_DB_HOST", "localhost")
 	t.Setenv("APP_DB_PORT", "5432")
 
-	defer os.Unsetenv("APP_DB_HOST")
-	defer os.Unsetenv("APP_DB_PORT")
+	defer func() { _ = os.Unsetenv("APP_DB_HOST")
+	defer func() { _ = os.Unsetenv("APP_DB_PORT")
 
 	source, _ := NewEnvSource("APP_", EnvSourceOptions{
 		Prefix:    "APP_",
@@ -182,7 +182,7 @@ func TestEnvSource_Load_WithSeparator(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -208,17 +208,17 @@ func TestEnvSource_Load_WithSeparator(t *testing.T) {
 func TestEnvSource_Get(t *testing.T) {
 	t.Setenv("TEST_KEY", "test_value")
 
-	defer os.Unsetenv("TEST_KEY")
+	defer func() { _ = os.Unsetenv("TEST_KEY")
 
 	source, _ := NewEnvSource("TEST_", EnvSourceOptions{
 		Prefix: "TEST_",
 	})
 
 	ctx := context.Background()
-	source.Load(ctx)
+	_ = source.Load(ctx)
 
 	t.Run("get existing key", func(t *testing.T) {
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Fatalf("Load() error = %v", err)
 		}
@@ -234,7 +234,7 @@ func TestEnvSource_Get(t *testing.T) {
 	})
 
 	t.Run("get non-existent key", func(t *testing.T) {
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Fatalf("Load() error = %v", err)
 		}
@@ -253,7 +253,7 @@ func TestEnvSource_Get(t *testing.T) {
 func TestEnvSource_KeyTransform(t *testing.T) {
 	t.Setenv("TEST_lower_case", "value")
 
-	defer os.Unsetenv("TEST_lower_case")
+	defer func() { _ = os.Unsetenv("TEST_lower_case")
 
 	keyTransform := func(key string) string {
 		return key + "_TRANSFORMED"
@@ -266,7 +266,7 @@ func TestEnvSource_KeyTransform(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -280,7 +280,7 @@ func TestEnvSource_KeyTransform(t *testing.T) {
 func TestEnvSource_ValueTransform(t *testing.T) {
 	t.Setenv("TEST_VALUE", "original")
 
-	defer os.Unsetenv("TEST_VALUE")
+	defer func() { _ = os.Unsetenv("TEST_VALUE")
 
 	valueTransform := func(key string, value any) any {
 		return value.(string) + "_TRANSFORMED"
@@ -293,7 +293,7 @@ func TestEnvSource_ValueTransform(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -316,7 +316,7 @@ func TestEnvSource_TypeConversion(t *testing.T) {
 
 	for key, value := range testVars {
 		t.Setenv(key, value)
-		defer os.Unsetenv(key)
+		defer func() { _ = os.Unsetenv(key)
 	}
 
 	source, _ := NewEnvSource("TEST_", EnvSourceOptions{
@@ -326,7 +326,7 @@ func TestEnvSource_TypeConversion(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -359,8 +359,8 @@ func TestEnvSource_RequiredVars(t *testing.T) {
 		t.Setenv("REQ_VAR1", "value1")
 		t.Setenv("REQ_VAR2", "value2")
 
-		defer os.Unsetenv("REQ_VAR1")
-		defer os.Unsetenv("REQ_VAR2")
+		defer func() { _ = os.Unsetenv("REQ_VAR1")
+		defer func() { _ = os.Unsetenv("REQ_VAR2")
 
 		source, _ := NewEnvSource("REQ_", EnvSourceOptions{
 			Prefix:       "REQ_",
@@ -369,7 +369,7 @@ func TestEnvSource_RequiredVars(t *testing.T) {
 
 		ctx := context.Background()
 
-		_, err := source.Load(ctx)
+		_, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v, want nil", err)
 		}
@@ -378,7 +378,7 @@ func TestEnvSource_RequiredVars(t *testing.T) {
 	t.Run("missing required var", func(t *testing.T) {
 		t.Setenv("REQ_VAR1", "value1")
 
-		defer os.Unsetenv("REQ_VAR1")
+		defer func() { _ = os.Unsetenv("REQ_VAR1")
 
 		source, _ := NewEnvSource("REQ_", EnvSourceOptions{
 			Prefix:       "REQ_",
@@ -387,7 +387,7 @@ func TestEnvSource_RequiredVars(t *testing.T) {
 
 		ctx := context.Background()
 
-		_, err := source.Load(ctx)
+		_, err := _ = source.Load(ctx)
 		if err == nil {
 			t.Error("Load() should return error for missing required var")
 		}
@@ -402,8 +402,8 @@ func TestEnvSource_SecretVars(t *testing.T) {
 	t.Setenv("SECRET_PASSWORD", "secret123")
 	t.Setenv("NORMAL_VAR", "normal")
 
-	defer os.Unsetenv("SECRET_PASSWORD")
-	defer os.Unsetenv("NORMAL_VAR")
+	defer func() { _ = os.Unsetenv("SECRET_PASSWORD")
+	defer func() { _ = os.Unsetenv("NORMAL_VAR")
 
 	source, _ := NewEnvSource("SECRET_", EnvSourceOptions{
 		SecretVars: []string{"PASSWORD"},
@@ -411,7 +411,7 @@ func TestEnvSource_SecretVars(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -508,7 +508,7 @@ func TestEnvSource_Lifecycle(t *testing.T) {
 	ctx := context.Background()
 
 	// Load
-	_, err := source.Load(ctx)
+	_, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Errorf("Load() error = %v", err)
 	}
@@ -592,7 +592,7 @@ func TestEnvSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v, want nil", err)
 		}
@@ -610,7 +610,7 @@ func TestEnvSource_EdgeCases(t *testing.T) {
 	t.Run("empty var value", func(t *testing.T) {
 		t.Setenv("TEST_EMPTY_VAR", "")
 
-		defer os.Unsetenv("TEST_EMPTY_VAR")
+		defer func() { _ = os.Unsetenv("TEST_EMPTY_VAR")
 
 		source, _ := NewEnvSource("TEST_", EnvSourceOptions{
 			KeyTransform: func(key string) string {
@@ -620,7 +620,7 @@ func TestEnvSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -637,7 +637,7 @@ func TestEnvSource_EdgeCases(t *testing.T) {
 		specialValue := "value with spaces and !@#$%^&*()"
 		t.Setenv("TEST_SPECIAL_VAR", specialValue)
 
-		defer os.Unsetenv("TEST_SPECIAL_VAR")
+		defer func() { _ = os.Unsetenv("TEST_SPECIAL_VAR")
 
 		source, _ := NewEnvSource("TEST_", EnvSourceOptions{
 			KeyTransform: func(key string) string {
@@ -647,7 +647,7 @@ func TestEnvSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -661,7 +661,7 @@ func TestEnvSource_EdgeCases(t *testing.T) {
 		longValue := strings.Repeat("a", 10000)
 		t.Setenv("TEST_LONG_VAR", longValue)
 
-		defer os.Unsetenv("TEST_LONG_VAR")
+		defer func() { _ = os.Unsetenv("TEST_LONG_VAR")
 
 		source, _ := NewEnvSource("TEST_", EnvSourceOptions{
 			KeyTransform: func(key string) string {
@@ -671,7 +671,7 @@ func TestEnvSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -685,7 +685,7 @@ func TestEnvSource_EdgeCases(t *testing.T) {
 		unicodeValue := "Hello 世界 🌍"
 		t.Setenv("TEST_UNICODE_VAR", unicodeValue)
 
-		defer os.Unsetenv("TEST_UNICODE_VAR")
+		defer func() { _ = os.Unsetenv("TEST_UNICODE_VAR")
 
 		source, _ := NewEnvSource("TEST_", EnvSourceOptions{
 			KeyTransform: func(key string) string {
@@ -695,7 +695,7 @@ func TestEnvSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -716,10 +716,10 @@ func TestEnvSource_ComplexNesting(t *testing.T) {
 	t.Setenv("APP_DB_REPLICA_HOST", "replica.db")
 	t.Setenv("APP_DB_REPLICA_PORT", "5433")
 
-	defer os.Unsetenv("APP_DB_MASTER_HOST")
-	defer os.Unsetenv("APP_DB_MASTER_PORT")
-	defer os.Unsetenv("APP_DB_REPLICA_HOST")
-	defer os.Unsetenv("APP_DB_REPLICA_PORT")
+	defer func() { _ = os.Unsetenv("APP_DB_MASTER_HOST")
+	defer func() { _ = os.Unsetenv("APP_DB_MASTER_PORT")
+	defer func() { _ = os.Unsetenv("APP_DB_REPLICA_HOST")
+	defer func() { _ = os.Unsetenv("APP_DB_REPLICA_PORT")
 
 	source, _ := NewEnvSource("APP_", EnvSourceOptions{
 		Prefix:    "APP_",
@@ -728,7 +728,7 @@ func TestEnvSource_ComplexNesting(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -779,7 +779,7 @@ func TestEnvSource_MixedTypes(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -839,7 +839,7 @@ func TestEnvSource_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err := source.Load(ctx)
+	_, err := _ = source.Load(ctx)
 
 	// Should either complete successfully or handle cancellation gracefully
 	if err != nil && !errors.Is(err, context.Canceled) {
@@ -858,8 +858,8 @@ func TestEnvSource_ReloadConsistency(t *testing.T) {
 	ctx := context.Background()
 
 	// Load twice
-	data1, err1 := source.Load(ctx)
-	data2, err2 := source.Load(ctx)
+	data1, err1 := _ = source.Load(ctx)
+	data2, err2 := _ = source.Load(ctx)
 
 	if err1 != nil || err2 != nil {
 		t.Fatalf("Load() errors = %v, %v", err1, err2)

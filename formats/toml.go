@@ -420,8 +420,8 @@ func (tp *TOMLProcessor) isValidTOMLFieldName(name string) bool {
 
 	// TOML field names can contain letters, numbers, underscores, and hyphens
 	for _, r := range name {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
-			(r >= '0' && r <= '9') || r == '_' || r == '-') {
+		if ((r < 'a' || r > 'z') && (r < 'A' || r > 'Z') &&
+			(r < '0' || r > '9') && r != '_' && r != '-') {
 			return false
 		}
 	}

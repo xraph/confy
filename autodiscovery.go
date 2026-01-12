@@ -384,7 +384,7 @@ func extractAppScopedConfig(c Confy, appName string) error {
 	appConfigKey := "apps." + appName
 	appConfig := c.GetSection(appConfigKey)
 
-	if appConfig == nil || len(appConfig) == 0 {
+	if len(appConfig) == 0 {
 		return fmt.Errorf("app-scoped config not found for app: %s", appName)
 	}
 

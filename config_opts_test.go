@@ -104,9 +104,7 @@ func TestWithValidator_Nil(t *testing.T) {
 	opt(opts)
 
 	// Should handle nil validator gracefully
-	if opts.Validator != nil {
-		// Implementation may or may not set nil validator
-	}
+	_ = opts.Validator // Validator may or may not be set
 }
 
 // =============================================================================
@@ -157,9 +155,7 @@ func TestWithTransform_Nil(t *testing.T) {
 	opt(opts)
 
 	// Should handle nil transform gracefully
-	if opts.Transform != nil {
-		// Implementation may or may not set nil transform
-	}
+	_ = opts.Transform // Transform may or may not be set
 }
 
 // =============================================================================
@@ -200,9 +196,7 @@ func TestWithOnMissing_Nil(t *testing.T) {
 	opt(opts)
 
 	// Should handle nil onMissing gracefully
-	if opts.OnMissing != nil {
-		// Implementation may or may not set nil onMissing
-	}
+	_ = opts.OnMissing // OnMissing may or may not be set
 }
 
 // =============================================================================

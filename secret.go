@@ -676,9 +676,9 @@ func (sm *SecretsManagerImpl) getProvidersInOrder() []SecretProvider {
 func (sm *SecretsManagerImpl) registerDefaultProviders() {
 	// Register built-in providers
 	// nolint:gosec // G104: RegisterProvider errors are not critical during initialization
-	sm.RegisterProvider("env", &EnvironmentSecretProvider{})
-	sm.RegisterProvider("file", &FileSecretProvider{})
-	sm.RegisterProvider("memory", &MemorySecretProvider{})
+	_ = sm.RegisterProvider("env", &EnvironmentSecretProvider{})
+	_ = sm.RegisterProvider("file", &FileSecretProvider{})
+	_ = sm.RegisterProvider("memory", &MemorySecretProvider{})
 }
 
 func (sm *SecretsManagerImpl) createProvider(config ProviderConfig) (SecretProvider, error) {

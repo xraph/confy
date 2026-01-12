@@ -1462,7 +1462,7 @@ func (c *ConfyImpl) loadAllSources(ctx context.Context) error {
 		if err != nil {
 			if c.errorHandler != nil {
 				// nolint:gosec // G104: Error handler intentionally discards return value
-				c.errorHandler.HandleError(nil, err)
+				_ = c.errorHandler.HandleError(context.Background(), err)
 			}
 
 			return ErrConfigError("failed to load source "+ps.source.Name(), err)

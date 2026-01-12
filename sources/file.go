@@ -261,7 +261,7 @@ func (fs *FileSource) Watch(ctx context.Context, callback func(map[string]any)) 
 	// Watch the file's directory to catch file recreations
 	dir := filepath.Dir(fs.path)
 	if err := watcher.Add(dir); err != nil {
-		watcher.Close()
+		_ = watcher.Close()
 
 		return configcore.ErrConfigError("failed to watch directory "+dir, err)
 	}
@@ -293,7 +293,7 @@ func (fs *FileSource) StopWatch() error {
 	}
 
 	if fs.watcher != nil {
-		if err := fs.watcher.Close(); err != nil {
+		if err := fs._ = watcher.Close(); err != nil {
 			if fs.logger != nil {
 				fs.logger.Warn("error closing file watcher",
 					logger.String("path", fs.path),
@@ -434,7 +434,7 @@ func (fs *FileSource) handleWatchError(err error) {
 	}
 
 	if fs.errorHandler != nil {
-		fs.errorHandler.HandleError(nil, configcore.ErrConfigError("file watch error for "+fs.path, err))
+		_ = fs.errorHandler.HandleError(context.Background(), configcore.ErrConfigError("file watch error for "+fs.path, err))
 	}
 }
 
@@ -520,7 +520,7 @@ func expandEnvWithDefaults(s string) string {
 				return value
 			}
 
-			os.Setenv(varName, defaultValue)
+			_ = os.Setenv(varName, defaultValue)
 
 			return defaultValue
 		}
@@ -534,7 +534,7 @@ func expandEnvWithDefaults(s string) string {
 				return value
 			}
 
-			os.Setenv(varName, defaultValue)
+			_ = os.Setenv(varName, defaultValue)
 
 			return defaultValue
 		}

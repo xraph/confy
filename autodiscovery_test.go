@@ -3,6 +3,7 @@ package confy
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	logger "github.com/xraph/go-utils/log"
@@ -204,7 +205,7 @@ func TestDiscoverAndLoadConfigs_NoConfigFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cfg := DefaultAutoDiscoveryConfig()
 	cfg.SearchPaths = []string{tmpDir}
@@ -293,7 +294,7 @@ app:
 		t.Error("Should find config in parent directory")
 	}
 
-	if !filepath.HasPrefix(result.BaseConfigPath, tmpDir) {
+	if !strings.HasPrefix(result.BaseConfigPath, tmpDir) {
 		t.Error("Config should be found in root temp dir")
 	}
 
@@ -313,9 +314,9 @@ func TestAutoLoadConfy(t *testing.T) {
 
 	// Save current directory and change to temp dir
 	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
+	defer func() { _ = os.Chdir(oldDir) }()
 
-	os.Chdir(tmpDir)
+	_ = os.Chdir(tmpDir)
 
 	// Create config
 	config := `
@@ -524,7 +525,7 @@ app:
 database:
   host: example.com
 `
-	os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte(config), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte(config), 0644)
 
 	cfg := DefaultAutoDiscoveryConfig()
 	cfg.SearchPaths = []string{tmpDir}

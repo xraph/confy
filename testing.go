@@ -710,8 +710,11 @@ func (t *TestConfyImpl) GetWithOptions(key string, opts ...configcore.GetOption)
 		}
 
 		if options.OnMissing != nil {
-			value = options.OnMissing(key)
-		} else if options.Default != nil {
+			// OnMissing callback to handle missing key, but we return Default
+			_ = options.OnMissing(key)
+		}
+		
+		if options.Default != nil {
 			return options.Default, nil
 		}
 
@@ -746,8 +749,11 @@ func (t *TestConfyImpl) GetStringWithOptions(key string, opts ...configcore.GetO
 		}
 
 		if options.OnMissing != nil {
-			value = options.OnMissing(key)
-		} else if options.Default != nil {
+			// OnMissing callback to handle missing key, but we return Default
+			_ = options.OnMissing(key)
+		}
+		
+		if options.Default != nil {
 			if defaultStr, ok := options.Default.(string); ok {
 				return defaultStr, nil
 			}
@@ -798,8 +804,11 @@ func (t *TestConfyImpl) GetIntWithOptions(key string, opts ...configcore.GetOpti
 		}
 
 		if options.OnMissing != nil {
-			value = options.OnMissing(key)
-		} else if options.Default != nil {
+			// OnMissing callback to handle missing key, but we return Default
+			_ = options.OnMissing(key)
+		}
+		
+		if options.Default != nil {
 			if defaultInt, ok := options.Default.(int); ok {
 				return defaultInt, nil
 			}

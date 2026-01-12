@@ -740,11 +740,11 @@ func (ks *K8sSource) handleWatchError(err error) {
 	}
 
 	if ks.errorHandler != nil {
-		ks.errorHandler.HandleError(nil, configcore.ErrConfigError("Kubernetes watch error for namespace "+ks.namespace, err))
+		_ = ks.errorHandler.HandleError(context.Background(), configcore.ErrConfigError("Kubernetes watch error for namespace "+ks.namespace, err))
 	}
 
 	// Stop watching on persistent errors
-	ks.StopWatch()
+	_ = ks.StopWatch()
 }
 
 // K8sSourceFactory creates Kubernetes configuration sources.

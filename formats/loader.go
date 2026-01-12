@@ -186,7 +186,7 @@ func (l *Loader) LoadSourceWithOptions(ctx context.Context, source configcore.Co
 
 	if err != nil {
 		if l.errorHandler != nil {
-			l.errorHandler.HandleError(context.TODO(), err)
+			_ = l.errorHandler.HandleError(context.TODO(), err)
 		}
 
 		return nil, configcore.ErrConfigError(fmt.Sprintf("failed to load source %s after %d attempts", sourceName, l.retryCount+1), err)

@@ -508,11 +508,11 @@ func (cs *ConsulSource) handleWatchError(err error) {
 	}
 
 	if cs.errorHandler != nil {
-		cs.errorHandler.HandleError(nil, configcore.ErrConfigError("Consul watch error for prefix "+cs.prefix, err))
+		_ = cs.errorHandler.HandleError(context.Background(), configcore.ErrConfigError("Consul watch error for prefix "+cs.prefix, err))
 	}
 
 	// Stop watching on persistent errors
-	cs.StopWatch()
+	_ = cs.StopWatch()
 }
 
 // ConsulSourceFactory creates Consul configuration sources.

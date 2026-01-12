@@ -297,7 +297,7 @@ api:
   url: ${API_URL:-http://localhost:3000}
 `
 
-	os.WriteFile(testFile, []byte(content), 0644)
+	_ = os.WriteFile(testFile, []byte(content), 0644)
 
 	tests := []struct {
 		name     string
@@ -464,7 +464,7 @@ database:
   name: ${DB_NAME}
 `
 
-	os.WriteFile(testFile, []byte(content), 0644)
+	_ = os.WriteFile(testFile, []byte(content), 0644)
 
 	// Set environment variables
 	os.Setenv("DB_HOST", "testhost")

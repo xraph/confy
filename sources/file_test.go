@@ -20,7 +20,7 @@ func TestNewFileSource(t *testing.T) {
 
 	// Create test file
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	tests := []struct {
 		name string
@@ -71,7 +71,7 @@ func TestNewFileSourceWithConfig(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "config.yaml")
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{
 		Priority: 10,
@@ -98,7 +98,7 @@ func TestFileSource_Metadata(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "config.yaml")
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -135,7 +135,7 @@ list:
   - item2
   - item3
 `)
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -144,7 +144,7 @@ list:
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -202,7 +202,7 @@ func TestFileSource_Load_JSON(t *testing.T) {
   },
   "list": ["item1", "item2", "item3"]
 }`)
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -211,7 +211,7 @@ func TestFileSource_Load_JSON(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -248,7 +248,7 @@ key = "nested_value"
 
 list = ["item1", "item2", "item3"]
 `)
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -257,7 +257,7 @@ list = ["item1", "item2", "item3"]
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -285,7 +285,7 @@ func TestFileSource_Get(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "config.yaml")
 
 	content := []byte("key: value\nanother: data\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -293,10 +293,10 @@ func TestFileSource_Get(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	source.Load(ctx)
+	_ = source.Load(ctx)
 
 	t.Run("get existing key", func(t *testing.T) {
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Fatalf("Load() error = %v", err)
 		}
@@ -312,7 +312,7 @@ func TestFileSource_Get(t *testing.T) {
 	})
 
 	t.Run("get non-existent key", func(t *testing.T) {
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Fatalf("Load() error = %v", err)
 		}
@@ -338,7 +338,7 @@ func TestFileSource_Watch(t *testing.T) {
 
 	// Create initial file
 	content := []byte("key: initial\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{
 		WatchEnabled: true,
@@ -355,7 +355,7 @@ func TestFileSource_Watch(t *testing.T) {
 	defer cancel()
 
 	// Load initial data
-	source.Load(ctx)
+	_ = source.Load(ctx)
 
 	changeDetected := make(chan bool, 1)
 	changes := make(chan struct{})
@@ -376,7 +376,7 @@ func TestFileSource_Watch(t *testing.T) {
 	// Modify file
 	newContent := []byte("key: modified\n")
 
-	err = os.WriteFile(testFile, newContent, 0644)
+	err = _ = os.WriteFile(testFile, newContent, 0644)
 	if err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
@@ -407,7 +407,7 @@ func TestFileSource_Watch_Disabled(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "config.yaml")
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{
 		WatchEnabled: false,
@@ -437,7 +437,7 @@ func TestFileSource_Validate(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "config.yaml")
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -486,7 +486,7 @@ func TestFileSource_Load_NonExistentFile(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = source.Load(ctx)
+	_, err = _ = source.Load(ctx)
 	if err == nil {
 		t.Error("Load() should return error for non-existent file")
 	}
@@ -498,7 +498,7 @@ func TestFileSource_Load_InvalidYAML(t *testing.T) {
 
 	// Invalid YAML content
 	content := []byte("key: value\ninvalid yaml: [unclosed bracket")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -507,7 +507,7 @@ func TestFileSource_Load_InvalidYAML(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = source.Load(ctx)
+	_, err = _ = source.Load(ctx)
 	if err == nil {
 		t.Error("Load() should return error for invalid YAML")
 	}
@@ -519,7 +519,7 @@ func TestFileSource_Load_InvalidJSON(t *testing.T) {
 
 	// Invalid JSON content
 	content := []byte(`{"key": "value", invalid}`)
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -528,7 +528,7 @@ func TestFileSource_Load_InvalidJSON(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = source.Load(ctx)
+	_, err = _ = source.Load(ctx)
 	if err == nil {
 		t.Error("Load() should return error for invalid JSON")
 	}
@@ -543,11 +543,11 @@ func TestFileSource_Load_UnreadableFile(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "unreadable.yaml")
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	// Make file unreadable
-	os.Chmod(testFile, 0000)
-	defer os.Chmod(testFile, 0644)
+	_ = os.Chmod(testFile, 0000)
+	defer _ = os.Chmod(testFile, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -556,7 +556,7 @@ func TestFileSource_Load_UnreadableFile(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = source.Load(ctx)
+	_, err = _ = source.Load(ctx)
 	if err == nil {
 		t.Error("Load() should return error for unreadable file")
 	}
@@ -572,7 +572,7 @@ func TestFileSource_Backup(t *testing.T) {
 	backupFile := testFile + ".backup"
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{
 		BackupEnabled: true,
@@ -583,7 +583,7 @@ func TestFileSource_Backup(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = source.Load(ctx)
+	_, err = _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -607,7 +607,7 @@ func TestFileSource_Lifecycle(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "config.yaml")
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -617,7 +617,7 @@ func TestFileSource_Lifecycle(t *testing.T) {
 	ctx := context.Background()
 
 	// Load
-	_, err = source.Load(ctx)
+	_, err = _ = source.Load(ctx)
 	if err != nil {
 		t.Errorf("Load() error = %v", err)
 	}
@@ -644,7 +644,7 @@ func TestFileSourceFactory_Create(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "config.yaml")
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	factory := &FileSourceFactory{}
 
@@ -719,7 +719,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 		testFile := filepath.Join(tmpDir, "empty.yaml")
 
 		// Create empty file
-		os.WriteFile(testFile, []byte{}, 0644)
+		_ = os.WriteFile(testFile, []byte{}, 0644)
 
 		source, err := NewFileSource(testFile, FileSourceOptions{})
 		if err != nil {
@@ -728,7 +728,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -743,7 +743,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 		testFile := filepath.Join(tmpDir, "whitespace.yaml")
 
 		content := []byte("   \n\n   \t\n")
-		os.WriteFile(testFile, content, 0644)
+		_ = os.WriteFile(testFile, content, 0644)
 
 		source, err := NewFileSource(testFile, FileSourceOptions{})
 		if err != nil {
@@ -752,7 +752,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -772,7 +772,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 			content = append(content, []byte("key"+strconv.Itoa(i)+": value\n")...)
 		}
 
-		os.WriteFile(testFile, content, 0644)
+		_ = os.WriteFile(testFile, content, 0644)
 
 		source, err := NewFileSource(testFile, FileSourceOptions{})
 		if err != nil {
@@ -781,7 +781,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -802,7 +802,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 		// UTF-8 BOM + content
 		content := []byte{0xEF, 0xBB, 0xBF}
 		content = append(content, []byte("key: value\n")...)
-		os.WriteFile(testFile, content, 0644)
+		_ = os.WriteFile(testFile, content, 0644)
 
 		source, err := NewFileSource(testFile, FileSourceOptions{})
 		if err != nil {
@@ -811,7 +811,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -826,7 +826,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 		testFile := filepath.Join(tmpDir, "unicode.yaml")
 
 		content := []byte("greeting: Hello 世界 🌍\n")
-		os.WriteFile(testFile, content, 0644)
+		_ = os.WriteFile(testFile, content, 0644)
 
 		source, err := NewFileSource(testFile, FileSourceOptions{})
 		if err != nil {
@@ -835,7 +835,7 @@ func TestFileSource_EdgeCases(t *testing.T) {
 
 		ctx := context.Background()
 
-		data, err := source.Load(ctx)
+		data, err := _ = source.Load(ctx)
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
@@ -855,7 +855,7 @@ func TestFileSource_Priority(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "config.yaml")
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	tests := []struct {
 		name     string
@@ -919,7 +919,7 @@ func TestFileSource_FormatDetection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testFile := filepath.Join(tmpDir, tt.filename)
-			os.WriteFile(testFile, tt.content, 0644)
+			_ = os.WriteFile(testFile, tt.content, 0644)
 
 			source, err := NewFileSource(testFile, FileSourceOptions{})
 			if err != nil {
@@ -928,7 +928,7 @@ func TestFileSource_FormatDetection(t *testing.T) {
 
 			ctx := context.Background()
 
-			data, err := source.Load(ctx)
+			data, err := _ = source.Load(ctx)
 			if err != nil {
 				t.Errorf("Load() error = %v", err)
 			}
@@ -953,7 +953,7 @@ func TestFileSource_ContextCancellation(t *testing.T) {
 	testFile := filepath.Join(tmpDir, "config.yaml")
 
 	content := []byte("key: value\n")
-	os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -963,7 +963,7 @@ func TestFileSource_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err = source.Load(ctx)
+	_, err = _ = source.Load(ctx)
 
 	// Should either complete successfully or handle cancellation gracefully
 	if err != nil && !errors.Is(err, context.Canceled) {
@@ -981,7 +981,7 @@ func TestFileSource_Reload(t *testing.T) {
 
 	// Initial content
 	content1 := []byte("key: value1\n")
-	os.WriteFile(testFile, content1, 0644)
+	_ = os.WriteFile(testFile, content1, 0644)
 
 	source, err := NewFileSource(testFile, FileSourceOptions{})
 	if err != nil {
@@ -991,7 +991,7 @@ func TestFileSource_Reload(t *testing.T) {
 	ctx := context.Background()
 
 	// First load
-	data1, err := source.Load(ctx)
+	data1, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("First Load() error = %v", err)
 	}
@@ -1002,13 +1002,13 @@ func TestFileSource_Reload(t *testing.T) {
 
 	// Modify file
 	content2 := []byte("key: value2\n")
-	os.WriteFile(testFile, content2, 0644)
+	_ = os.WriteFile(testFile, content2, 0644)
 
 	// Give filesystem time to update
 	time.Sleep(100 * time.Millisecond)
 
 	// Second load
-	data2, err := source.Load(ctx)
+	data2, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Second Load() error = %v", err)
 	}
@@ -1048,7 +1048,7 @@ func TestFileSource_Symlink(t *testing.T) {
 
 	ctx := context.Background()
 
-	data, err := source.Load(ctx)
+	data, err := _ = source.Load(ctx)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}

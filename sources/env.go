@@ -616,7 +616,7 @@ func (es *EnvSource) handleWatchError(err error) {
 	}
 
 	if es.errorHandler != nil {
-		es.errorHandler.HandleError(nil, configcore.ErrConfigError("environment watch error for prefix "+es.prefix, err))
+		_ = es.errorHandler.HandleError(context.Background(), configcore.ErrConfigError("environment watch error for prefix "+es.prefix, err))
 	}
 }
 

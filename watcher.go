@@ -430,7 +430,7 @@ func (w *Watcher) handleWatchError(sourceName string, err error) {
 	}
 
 	if w.errorHandler != nil {
-		w.errorHandler.HandleError(nil, ErrConfigError("watch error for source "+sourceName, err))
+		_ = w.errorHandler.HandleError(context.Background(), ErrConfigError("watch error for source "+sourceName, err))
 	}
 
 	if w.metrics != nil {
