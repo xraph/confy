@@ -37,7 +37,7 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			confy := New(tt.config)
+			confy := NewFromConfig(tt.config)
 			if confy == nil {
 				t.Fatal("New() returned nil")
 			}
@@ -69,7 +69,7 @@ func TestNew(t *testing.T) {
 // =============================================================================
 
 func TestConfy_Get(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	// Set some test data
 	confy.data = map[string]any{
@@ -106,7 +106,7 @@ func TestConfy_Get(t *testing.T) {
 }
 
 func TestConfy_GetString(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"string": "value",
 		"int":    42,
@@ -137,7 +137,7 @@ func TestConfy_GetString(t *testing.T) {
 }
 
 func TestConfy_GetInt(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"int":     42,
 		"int8":    int8(10),
@@ -176,7 +176,7 @@ func TestConfy_GetInt(t *testing.T) {
 }
 
 func TestConfy_GetBool(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"bool_true":    true,
 		"bool_false":   false,
@@ -213,7 +213,7 @@ func TestConfy_GetBool(t *testing.T) {
 }
 
 func TestConfy_GetDuration(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"duration": 5 * time.Second,
 		"string":   "10s",
@@ -244,7 +244,7 @@ func TestConfy_GetDuration(t *testing.T) {
 }
 
 func TestConfy_GetStringSlice(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"slice":     []string{"a", "b", "c"},
 		"interface": []any{"x", "y", "z"},
@@ -275,7 +275,7 @@ func TestConfy_GetStringSlice(t *testing.T) {
 }
 
 func TestConfy_GetStringMap(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"map_string":    map[string]string{"key": "value"},
 		"map_interface": map[string]any{"foo": "bar"},
@@ -304,7 +304,7 @@ func TestConfy_GetStringMap(t *testing.T) {
 }
 
 func TestConfy_GetSizeInBytes(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"int":       1024,
 		"uint":      uint64(2048),
@@ -343,7 +343,7 @@ func TestConfy_GetSizeInBytes(t *testing.T) {
 // =============================================================================
 
 func TestConfy_GetWithOptions(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"value": "test",
 		"empty": "",
@@ -432,7 +432,7 @@ func TestConfy_GetWithOptions(t *testing.T) {
 }
 
 func TestConfy_GetStringWithOptions(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"value": "test",
 		"empty": "",
@@ -466,7 +466,7 @@ func TestConfy_GetStringWithOptions(t *testing.T) {
 // =============================================================================
 
 func TestConfy_Set(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	tests := []struct {
 		name  string
@@ -492,7 +492,7 @@ func TestConfy_Set(t *testing.T) {
 }
 
 func TestConfy_Reset(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	// Add some data
 	confy.data["key"] = "value"
@@ -520,7 +520,7 @@ func TestConfy_Reset(t *testing.T) {
 // =============================================================================
 
 func TestConfy_GetKeys(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"key1": "value1",
 		"key2": map[string]any{
@@ -551,7 +551,7 @@ func TestConfy_GetKeys(t *testing.T) {
 }
 
 func TestConfy_HasKey(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"key1": "value1",
 		"nested": map[string]any{
@@ -581,7 +581,7 @@ func TestConfy_HasKey(t *testing.T) {
 }
 
 func TestConfy_IsSet(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"string":       "value",
 		"empty_string": "",
@@ -616,7 +616,7 @@ func TestConfy_IsSet(t *testing.T) {
 }
 
 func TestConfy_Size(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	if size := confy.Size(); size != 0 {
 		t.Errorf("Empty confy Size() = %v, want 0", size)
@@ -636,7 +636,7 @@ func TestConfy_Size(t *testing.T) {
 }
 
 func TestConfy_GetSection(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"section": map[string]any{
 			"key1": "value1",
@@ -679,7 +679,7 @@ func TestConfy_GetSection(t *testing.T) {
 // =============================================================================
 
 func TestConfy_Sub(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"section": map[string]any{
 			"key1": "value1",
@@ -709,7 +709,7 @@ func TestConfy_Sub(t *testing.T) {
 }
 
 func TestConfy_Clone(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"key1": "value1",
 		"nested": map[string]any{
@@ -736,7 +736,7 @@ func TestConfy_Clone(t *testing.T) {
 }
 
 func TestConfy_GetAllSettings(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	testData := map[string]any{
 		"key1": "value1",
 		"key2": 42,
@@ -780,7 +780,7 @@ type TestNestedConfig struct {
 }
 
 func TestConfy_Bind(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"string": "test",
 		"int":    42,
@@ -822,7 +822,7 @@ func TestConfy_Bind(t *testing.T) {
 }
 
 func TestConfy_Bind_WithKey(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"section": map[string]any{
 			"key":   "value",
@@ -847,7 +847,7 @@ func TestConfy_Bind_WithKey(t *testing.T) {
 }
 
 func TestConfy_BindWithOptions(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"key": "value",
 	}
@@ -915,7 +915,7 @@ type TestNestedDefaultConfig struct {
 }
 
 func TestConfy_BindWithDefault_StructValue(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{} // Empty config
 
 	t.Run("struct default with yaml tags", func(t *testing.T) {
@@ -1097,7 +1097,7 @@ func TestConfy_BindWithDefault_StructValue(t *testing.T) {
 }
 
 func TestConfy_BindWithDefault_PrimitiveValue(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{} // Empty config
 
 	t.Run("int default", func(t *testing.T) {
@@ -1162,7 +1162,7 @@ func TestConfy_BindWithDefault_PrimitiveValue(t *testing.T) {
 }
 
 func TestConfy_structToMap(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	t.Run("yaml tags precedence over json", func(t *testing.T) {
 		type TestBothTags struct {
@@ -1336,7 +1336,7 @@ func TestConfy_structToMap(t *testing.T) {
 // =============================================================================
 
 func TestConfy_WatchWithCallback(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"key": "initial",
 	}
@@ -1387,7 +1387,7 @@ func TestConfy_WatchWithCallback(t *testing.T) {
 }
 
 func TestConfy_WatchChanges(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	var mu sync.Mutex
 
@@ -1429,7 +1429,7 @@ func TestConfy_WatchChanges(t *testing.T) {
 // =============================================================================
 
 func TestConfy_Validate(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 	confy.data = map[string]any{
 		"key": "value",
 	}
@@ -1442,7 +1442,7 @@ func TestConfy_Validate(t *testing.T) {
 }
 
 func TestConfy_Reload(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	// Reload should not error even with no sources
 	err := confy.Reload()
@@ -1452,7 +1452,7 @@ func TestConfy_Reload(t *testing.T) {
 }
 
 func TestConfy_Stop(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	err := confy.Stop()
 	if err != nil {
@@ -1467,7 +1467,7 @@ func TestConfy_Stop(t *testing.T) {
 }
 
 func TestConfy_ConfigFileUsed(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	// Test ConfigFileUsed returns empty string when no file sources
 	path := confy.ConfigFileUsed()
@@ -1481,7 +1481,7 @@ func TestConfy_ConfigFileUsed(t *testing.T) {
 // =============================================================================
 
 func TestConfy_ConversionHelpers(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	t.Run("convertToString", func(t *testing.T) {
 		tests := []struct {
@@ -1534,7 +1534,7 @@ func TestConfy_SecretsManager(t *testing.T) {
 	config := Config{
 		SecretsEnabled: true,
 	}
-	confy := New(config)
+	confy := NewFromConfig(config)
 
 	sm := confy.SecretsManager()
 	if sm == nil {
@@ -1545,7 +1545,7 @@ func TestConfy_SecretsManager(t *testing.T) {
 	config2 := Config{
 		SecretsEnabled: false,
 	}
-	manager2 := New(config2)
+	manager2 := NewFromConfig(config2)
 
 	sm2 := manager2.SecretsManager()
 	if sm2 != nil {
@@ -1558,7 +1558,7 @@ func TestConfy_SecretsManager(t *testing.T) {
 // =============================================================================
 
 func TestConfy_Concurrency(t *testing.T) {
-	confy := New(Config{}).(*ConfyImpl)
+	confy := NewFromConfig(Config{}).(*ConfyImpl)
 
 	// Test concurrent reads and writes
 	done := make(chan bool)

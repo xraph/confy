@@ -65,8 +65,43 @@ type Config struct {
 	ErrorHandler    errors.ErrorHandler `json:"-"                 yaml:"-"`
 }
 
-// New creates a new ConfyImpl instance that implements the Confy interface.
-func New(config Config) Confy {
+// New creates a new ConfyImpl instance with functional options.
+//
+// Usage:
+//
+//	cfg := confy.New(
+//	    confy.WithWatchInterval(30 * time.Second),
+//	    confy.WithLogger(myLogger),
+//	    confy.WithMetricsEnabled(true),
+//	    confy.WithSecretsEnabled(true),
+//	)
+func New(opts ...Option) Confy {
+	config := Config{}
+
+	// Apply functional options
+	for _, opt := range opts {
+		opt(&config)
+	}
+
+	return newFromConfig(config)
+}
+
+// NewFromConfig creates a new ConfyImpl instance from a Config struct.
+// Deprecated: Use New with functional options instead.
+//
+// Usage (backward compatible):
+//
+//	cfg := confy.NewFromConfig(confy.Config{
+//	    WatchInterval: 30 * time.Second,
+//	    Logger: myLogger,
+//	})
+func NewFromConfig(config Config) Confy {
+	return newFromConfig(config)
+}
+
+// newFromConfig is the internal constructor that handles the actual initialization.
+func newFromConfig(config Config) Confy {
+	// Apply defaults
 	if config.WatchInterval == 0 {
 		config.WatchInterval = 30 * time.Second
 	}

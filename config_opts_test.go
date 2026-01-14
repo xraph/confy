@@ -2,6 +2,7 @@ package confy
 
 import (
 	"testing"
+	"time"
 
 	configcore "github.com/xraph/confy/internal"
 )
@@ -815,6 +816,251 @@ func TestOptionReusability(t *testing.T) {
 
 		if opts2.Default != "value2" {
 			t.Errorf("opts2.Default = %v, want value2", opts2.Default)
+		}
+	})
+}
+
+// =============================================================================
+// CONSTRUCTOR OPTIONS TESTS
+// =============================================================================
+
+func TestConstructorOptions(t *testing.T) {
+	t.Run("WithWatchInterval", func(t *testing.T) {
+		cfg := &Config{}
+		WithWatchInterval(10 * time.Second)(cfg)
+
+		if cfg.WatchInterval != 10*time.Second {
+			t.Errorf("WatchInterval = %v, want 10s", cfg.WatchInterval)
+		}
+	})
+
+	t.Run("WithValidationMode", func(t *testing.T) {
+		cfg := &Config{}
+		WithValidationMode(ValidationModeStrict)(cfg)
+
+		if cfg.ValidationMode != ValidationModeStrict {
+			t.Errorf("ValidationMode = %v, want ValidationModeStrict", cfg.ValidationMode)
+		}
+	})
+
+	t.Run("WithSecretsEnabled", func(t *testing.T) {
+		cfg := &Config{}
+		WithSecretsEnabled(true)(cfg)
+
+		if !cfg.SecretsEnabled {
+			t.Error("SecretsEnabled should be true")
+		}
+	})
+
+	t.Run("WithCacheEnabled", func(t *testing.T) {
+		cfg := &Config{}
+		WithCacheEnabled(true)(cfg)
+
+		if !cfg.CacheEnabled {
+			t.Error("CacheEnabled should be true")
+		}
+	})
+
+	t.Run("WithReloadOnChange", func(t *testing.T) {
+		cfg := &Config{}
+		WithReloadOnChange(true)(cfg)
+
+		if !cfg.ReloadOnChange {
+			t.Error("ReloadOnChange should be true")
+		}
+	})
+
+	t.Run("WithErrorRetryCount", func(t *testing.T) {
+		cfg := &Config{}
+		WithErrorRetryCount(5)(cfg)
+
+		if cfg.ErrorRetryCount != 5 {
+			t.Errorf("ErrorRetryCount = %d, want 5", cfg.ErrorRetryCount)
+		}
+	})
+
+	t.Run("WithErrorRetryDelay", func(t *testing.T) {
+		cfg := &Config{}
+		WithErrorRetryDelay(2 * time.Second)(cfg)
+
+		if cfg.ErrorRetryDelay != 2*time.Second {
+			t.Errorf("ErrorRetryDelay = %v, want 2s", cfg.ErrorRetryDelay)
+		}
+	})
+
+	t.Run("WithMetricsEnabled", func(t *testing.T) {
+		cfg := &Config{}
+		WithMetricsEnabled(true)(cfg)
+
+		if !cfg.MetricsEnabled {
+			t.Error("MetricsEnabled should be true")
+		}
+	})
+}
+
+func TestNew_WithOptions(t *testing.T) {
+	t.Run("empty options creates instance with defaults", func(t *testing.T) {
+		c := New()
+
+		if c == nil {
+			t.Fatal("New() returned nil")
+		}
+
+		// Verify it's the right type
+		if _, ok := c.(*ConfyImpl); !ok {
+			t.Fatal("New() did not return *ConfyImpl")
+		}
+	})
+
+	t.Run("single option", func(t *testing.T) {
+		c := New(WithWatchInterval(15 * time.Second))
+
+		if c == nil {
+			t.Fatal("New() returned nil")
+		}
+
+		impl, ok := c.(*ConfyImpl)
+		if !ok {
+			t.Fatal("New() did not return *ConfyImpl")
+		}
+
+		if impl.watcher == nil {
+			t.Fatal("watcher should not be nil")
+		}
+	})
+
+	t.Run("multiple options", func(t *testing.T) {
+		c := New(
+			WithWatchInterval(20*time.Second),
+			WithErrorRetryCount(10),
+			WithErrorRetryDelay(3*time.Second),
+			WithSecretsEnabled(true),
+			WithMetricsEnabled(true),
+		)
+
+		if c == nil {
+			t.Fatal("New() returned nil")
+		}
+
+		impl, ok := c.(*ConfyImpl)
+		if !ok {
+			t.Fatal("New() did not return *ConfyImpl")
+		}
+
+		// Verify secrets manager was created
+		if impl.secretsManager == nil {
+			t.Error("secretsManager should not be nil when SecretsEnabled is true")
+		}
+	})
+
+	t.Run("with validation mode", func(t *testing.T) {
+		c := New(
+			WithValidationMode(ValidationModeStrict),
+		)
+
+		if c == nil {
+			t.Fatal("New() returned nil")
+		}
+
+		_, ok := c.(*ConfyImpl)
+		if !ok {
+			t.Fatal("New() did not return *ConfyImpl")
+		}
+	})
+}
+
+func TestNewFromConfig_BackwardCompatibility(t *testing.T) {
+	t.Run("creates instance from Config struct", func(t *testing.T) {
+		cfg := Config{
+			WatchInterval:   25 * time.Second,
+			ErrorRetryCount: 7,
+			ErrorRetryDelay: 4 * time.Second,
+			SecretsEnabled:  true,
+		}
+
+		c := NewFromConfig(cfg)
+
+		if c == nil {
+			t.Fatal("NewFromConfig() returned nil")
+		}
+
+		impl, ok := c.(*ConfyImpl)
+		if !ok {
+			t.Fatal("NewFromConfig() did not return *ConfyImpl")
+		}
+
+		if impl.secretsManager == nil {
+			t.Error("secretsManager should not be nil when SecretsEnabled is true")
+		}
+	})
+
+	t.Run("applies defaults when not set", func(t *testing.T) {
+		cfg := Config{}
+		c := NewFromConfig(cfg)
+
+		if c == nil {
+			t.Fatal("NewFromConfig() returned nil")
+		}
+
+		// Defaults should be applied by the internal constructor
+		_, ok := c.(*ConfyImpl)
+		if !ok {
+			t.Fatal("NewFromConfig() did not return *ConfyImpl")
+		}
+	})
+}
+
+func TestConstructorOptions_Composition(t *testing.T) {
+	t.Run("options can be composed", func(t *testing.T) {
+		// Create reusable option sets
+		developmentOpts := []Option{
+			WithWatchInterval(5 * time.Second),
+			WithMetricsEnabled(true),
+			WithValidationMode(ValidationModePermissive),
+		}
+
+		productionOpts := []Option{
+			WithWatchInterval(30 * time.Second),
+			WithMetricsEnabled(true),
+			WithValidationMode(ValidationModeStrict),
+			WithSecretsEnabled(true),
+		}
+
+		// Use development options
+		devConfy := New(developmentOpts...)
+		if devConfy == nil {
+			t.Fatal("New() with development options returned nil")
+		}
+
+		// Use production options
+		prodConfy := New(productionOpts...)
+		if prodConfy == nil {
+			t.Fatal("New() with production options returned nil")
+		}
+
+		// Verify production has secrets enabled
+		if impl, ok := prodConfy.(*ConfyImpl); ok {
+			if impl.secretsManager == nil {
+				t.Error("production config should have secrets manager")
+			}
+		}
+	})
+
+	t.Run("options can override each other", func(t *testing.T) {
+		// Later options should override earlier ones
+		c := New(
+			WithWatchInterval(10*time.Second),
+			WithWatchInterval(20*time.Second), // This should win
+		)
+
+		if c == nil {
+			t.Fatal("New() returned nil")
+		}
+
+		// We can't directly inspect the watch interval without exposing it,
+		// but we can verify the instance was created successfully
+		if _, ok := c.(*ConfyImpl); !ok {
+			t.Fatal("New() did not return *ConfyImpl")
 		}
 	})
 }

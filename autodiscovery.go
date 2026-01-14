@@ -158,7 +158,7 @@ func DiscoverAndLoadConfigs(cfg AutoDiscoveryConfig) (Confy, *AutoDiscoveryResul
 	}
 
 	// Create confy
-	confy := New(Config{
+	confy := NewFromConfig(Config{
 		Logger:       cfg.Logger,
 		ErrorHandler: cfg.ErrorHandler,
 	})
@@ -570,7 +570,7 @@ func dirExists(path string) bool {
 // LoadConfigFromPaths is a helper that loads config from explicit paths
 // Useful when you know exactly where your config files are.
 func LoadConfigFromPaths(basePath, localPath, appName string, logger logger.Logger) (Confy, error) {
-	confy := New(Config{
+	confy := NewFromConfig(Config{
 		Logger: logger,
 	})
 

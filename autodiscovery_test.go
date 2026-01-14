@@ -390,7 +390,7 @@ database:
 // TestExtractAppScopedConfig tests app scoping extraction.
 func TestExtractAppScopedConfig(t *testing.T) {
 	// Create manager with app-scoped config
-	confy := New(Config{
+	confy := NewFromConfig(Config{
 		Logger: logger.NewNoopLogger(),
 	})
 
