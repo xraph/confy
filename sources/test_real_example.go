@@ -42,7 +42,7 @@ func TestRealConfigExample_WithDefaults(t *testing.T) {
 			if len(databases) > 0 {
 				firstDB := databases[0].(map[string]any)
 
-				expectedDSN := "postgres://postgres:postgres@localhost:5432/kineta?sslmode=disable"
+				expectedDSN := "postgres://postgres:postgres@localhost:5432/kineta?sslmode=disable" // #nosec G101 -- test DSN, not real credentials
 				if firstDB["dsn"] != expectedDSN {
 					t.Errorf("database.databases[0].dsn = %v, want %v", firstDB["dsn"], expectedDSN)
 				}
@@ -141,7 +141,7 @@ func TestRealConfigExample_WithEnvOverrides(t *testing.T) {
 			if len(databases) > 0 {
 				firstDB := databases[0].(map[string]any)
 
-				expectedDSN := "postgres://admin:secret@prod-db:5432/proddb"
+				expectedDSN := "postgres://admin:secret@prod-db:5432/proddb" // #nosec G101 -- test DSN, not real credentials
 				if firstDB["dsn"] != expectedDSN {
 					t.Errorf("database.databases[0].dsn = %v, want %v", firstDB["dsn"], expectedDSN)
 				}
@@ -226,7 +226,7 @@ func TestRealConfigExample_MixedDefaults(t *testing.T) {
 			if len(databases) > 0 {
 				firstDB := databases[0].(map[string]any)
 				// DSN should use env var
-				if firstDB["dsn"] != "postgres://user:pass@custom-db:5432/mydb" {
+				if firstDB["dsn"] != "postgres://user:pass@custom-db:5432/mydb" { // #nosec G101 -- test DSN, not real credentials
 					t.Errorf("database.databases[0].dsn = %v, want custom DSN", firstDB["dsn"])
 				}
 				// max_open_conns should use default
