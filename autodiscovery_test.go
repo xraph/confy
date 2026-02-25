@@ -57,11 +57,11 @@ logging:
 	}
 
 	// Verify discovery results
-	if result.BaseConfigPath == "" {
+	if result.BaseConfigPath() == "" {
 		t.Error("Base config path should be found")
 	}
 
-	if result.LocalConfigPath == "" {
+	if result.LocalConfigPath() == "" {
 		t.Error("Local config path should be found")
 	}
 
@@ -160,7 +160,7 @@ apps:
 	}
 
 	// Verify discovery results
-	if result.BaseConfigPath == "" {
+	if result.BaseConfigPath() == "" {
 		t.Error("Base config path should be found")
 	}
 
@@ -218,12 +218,20 @@ func TestDiscoverAndLoadConfigs_NoConfigFiles(t *testing.T) {
 		t.Fatalf("Should not error when config is optional: %v", err)
 	}
 
-	if result.BaseConfigPath != "" {
+	if result.BaseConfigPath() != "" {
 		t.Error("Base config path should be empty")
 	}
 
-	if result.LocalConfigPath != "" {
+	if result.LocalConfigPath() != "" {
 		t.Error("Local config path should be empty")
+	}
+
+	if len(result.BaseConfigPaths) != 0 {
+		t.Error("BaseConfigPaths should be empty")
+	}
+
+	if len(result.LocalConfigPaths) != 0 {
+		t.Error("LocalConfigPaths should be empty")
 	}
 
 	// Manager should still work with empty config
@@ -290,11 +298,11 @@ app:
 		t.Fatalf("Failed to discover config: %v", err)
 	}
 
-	if result.BaseConfigPath == "" {
+	if result.BaseConfigPath() == "" {
 		t.Error("Should find config in parent directory")
 	}
 
-	if !strings.HasPrefix(result.BaseConfigPath, tmpDir) {
+	if !strings.HasPrefix(result.BaseConfigPath(), tmpDir) {
 		t.Error("Config should be found in root temp dir")
 	}
 
@@ -511,6 +519,137 @@ apps:
 		if val := confy.GetString(tt.key); val != tt.expected {
 			t.Errorf("%s: expected '%s', got '%s'", tt.desc, tt.expected, val)
 		}
+	}
+}
+
+// TestDiscoverAndLoadConfigs_MultipleSearchPaths tests that configs from
+// ALL search paths are discovered and merged, not just the first match.
+func TestDiscoverAndLoadConfigs_MultipleSearchPaths(t *testing.T) {
+	// Create two separate directories, each with its own config.
+	dir1, err := os.MkdirTemp("", "forge-multi-path-1-*")
+	if err != nil {
+		t.Fatalf("Failed to create dir1: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(dir1) }()
+
+	dir2, err := os.MkdirTemp("", "forge-multi-path-2-*")
+	if err != nil {
+		t.Fatalf("Failed to create dir2: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(dir2) }()
+
+	// dir1 config: sets database.host and app.name
+	config1 := `
+app:
+  name: from-dir1
+database:
+  host: dir1-host
+  port: 5432
+`
+	if err := os.WriteFile(filepath.Join(dir1, "config.yaml"), []byte(config1), 0644); err != nil {
+		t.Fatalf("Failed to write config1: %v", err)
+	}
+
+	// dir2 config: overrides database.host but keeps app.name from dir1
+	config2 := `
+database:
+  host: dir2-host
+  name: dir2-db
+`
+	if err := os.WriteFile(filepath.Join(dir2, "config.yaml"), []byte(config2), 0644); err != nil {
+		t.Fatalf("Failed to write config2: %v", err)
+	}
+
+	// dir2 also has a local config
+	local2 := `
+database:
+  password: secret
+`
+	if err := os.WriteFile(filepath.Join(dir2, "config.local.yaml"), []byte(local2), 0644); err != nil {
+		t.Fatalf("Failed to write local2: %v", err)
+	}
+
+	cfg := DefaultAutoDiscoveryConfig()
+	cfg.SearchPaths = []string{dir1, dir2}
+	cfg.Logger = logger.NewNoopLogger()
+
+	confy, result, err := DiscoverAndLoadConfigs(cfg)
+	if err != nil {
+		t.Fatalf("Failed to discover configs: %v", err)
+	}
+
+	// Both base configs should be discovered.
+	if len(result.BaseConfigPaths) != 2 {
+		t.Fatalf("Expected 2 base config paths, got %d: %v", len(result.BaseConfigPaths), result.BaseConfigPaths)
+	}
+
+	// One local config should be discovered (only dir2 has one).
+	if len(result.LocalConfigPaths) != 1 {
+		t.Fatalf("Expected 1 local config path, got %d: %v", len(result.LocalConfigPaths), result.LocalConfigPaths)
+	}
+
+	// Convenience methods should return first entries.
+	if result.BaseConfigPath() != filepath.Join(dir1, "config.yaml") {
+		t.Errorf("BaseConfigPath() should return dir1 config, got %s", result.BaseConfigPath())
+	}
+
+	// dir2 base config (priority 101) should override dir1 base config (priority 100)
+	// for database.host.
+	if host := confy.GetString("database.host"); host != "dir2-host" {
+		t.Errorf("Expected database.host to be 'dir2-host' (from dir2, higher priority), got '%s'", host)
+	}
+
+	// database.name only exists in dir2.
+	if name := confy.GetString("database.name"); name != "dir2-db" {
+		t.Errorf("Expected database.name to be 'dir2-db', got '%s'", name)
+	}
+
+	// database.port only exists in dir1 — should still be present.
+	if port := confy.GetInt("database.port"); port != 5432 {
+		t.Errorf("Expected database.port to be 5432 (from dir1), got %d", port)
+	}
+
+	// app.name only exists in dir1 — should still be present.
+	if name := confy.GetString("app.name"); name != "from-dir1" {
+		t.Errorf("Expected app.name to be 'from-dir1', got '%s'", name)
+	}
+
+	// database.password from local config (priority 200) should be present.
+	if pw := confy.GetString("database.password"); pw != "secret" {
+		t.Errorf("Expected database.password to be 'secret' (from local), got '%s'", pw)
+	}
+}
+
+// TestDiscoverAndLoadConfigs_DuplicatePaths tests that overlapping search
+// paths that find the same file are deduplicated.
+func TestDiscoverAndLoadConfigs_DuplicatePaths(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "forge-dedup-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	config := `
+app:
+  name: dedup-test
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte(config), 0644); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	// Pass the same path twice.
+	cfg := DefaultAutoDiscoveryConfig()
+	cfg.SearchPaths = []string{tmpDir, tmpDir}
+	cfg.Logger = logger.NewNoopLogger()
+
+	_, result, err := DiscoverAndLoadConfigs(cfg)
+	if err != nil {
+		t.Fatalf("Failed to discover configs: %v", err)
+	}
+
+	// Should be deduplicated to a single entry.
+	if len(result.BaseConfigPaths) != 1 {
+		t.Errorf("Expected 1 base config path after dedup, got %d: %v", len(result.BaseConfigPaths), result.BaseConfigPaths)
 	}
 }
 

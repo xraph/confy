@@ -89,20 +89,36 @@ type AutoDiscoveryConfig struct {
 
 // AutoDiscoveryResult contains the result of config discovery.
 type AutoDiscoveryResult struct {
-	// BaseConfigPath is the path to the base config file
-	BaseConfigPath string
+	// BaseConfigPaths contains all discovered base config file paths (ordered by search path).
+	BaseConfigPaths []string
 
-	// LocalConfigPath is the path to the local config file
-	LocalConfigPath string
+	// LocalConfigPaths contains all discovered local config file paths (ordered by search path).
+	LocalConfigPaths []string
 
-	// WorkingDirectory is the directory where configs were found
+	// WorkingDirectory is the directory where the first config was found.
 	WorkingDirectory string
 
-	// IsMonorepo indicates if this is a monorepo layout
+	// IsMonorepo indicates if this is a monorepo layout.
 	IsMonorepo bool
 
-	// AppName is the app name for app-scoped configs
+	// AppName is the app name for app-scoped configs.
 	AppName string
+}
+
+// BaseConfigPath returns the first base config path, or "" if none were found.
+func (r *AutoDiscoveryResult) BaseConfigPath() string {
+	if len(r.BaseConfigPaths) > 0 {
+		return r.BaseConfigPaths[0]
+	}
+	return ""
+}
+
+// LocalConfigPath returns the first local config path, or "" if none were found.
+func (r *AutoDiscoveryResult) LocalConfigPath() string {
+	if len(r.LocalConfigPaths) > 0 {
+		return r.LocalConfigPaths[0]
+	}
+	return ""
 }
 
 // DefaultAutoDiscoveryConfig returns default auto-discovery configuration.
@@ -169,11 +185,14 @@ func DiscoverAndLoadConfigs(cfg AutoDiscoveryConfig) (Confy, *AutoDiscoveryResul
 	// - Environment (if EnvOverridesFile=true): 300
 	// - Environment (if EnvOverridesFile=false): 50
 
-	// Load base config if found
-	if result.BaseConfigPath != "" {
-		source, err := sources.NewFileSource(result.BaseConfigPath, sources.FileSourceOptions{
-			Name:          "config.base",
-			Priority:      PriorityBaseConfig,
+	// Load all base configs (priority 100, 101, 102, …)
+	if len(result.BaseConfigPaths) == 0 && cfg.RequireBase {
+		return nil, nil, errors.New("base config file required but not found")
+	}
+	for i, basePath := range result.BaseConfigPaths {
+		source, err := sources.NewFileSource(basePath, sources.FileSourceOptions{
+			Name:          fmt.Sprintf("config.base.%d", i),
+			Priority:      PriorityBaseConfig + i,
 			WatchEnabled:  true,
 			ExpandEnvVars: true,
 			RequireFile:   cfg.RequireBase,
@@ -182,24 +201,25 @@ func DiscoverAndLoadConfigs(cfg AutoDiscoveryConfig) (Confy, *AutoDiscoveryResul
 		})
 		if err != nil {
 			if cfg.RequireBase {
-				return nil, nil, fmt.Errorf("failed to create base config source: %w", err)
+				return nil, nil, fmt.Errorf("failed to create base config source %q: %w", basePath, err)
 			}
-		} else {
-			if err := confy.LoadFrom(source); err != nil {
-				if cfg.RequireBase {
-					return nil, nil, fmt.Errorf("failed to load base config: %w", err)
-				}
+			continue
+		}
+		if err := confy.LoadFrom(source); err != nil {
+			if cfg.RequireBase {
+				return nil, nil, fmt.Errorf("failed to load base config %q: %w", basePath, err)
 			}
 		}
-	} else if cfg.RequireBase {
-		return nil, nil, errors.New("base config file required but not found")
 	}
 
-	// Load local config if found (higher priority - overrides base)
-	if result.LocalConfigPath != "" {
-		source, err := sources.NewFileSource(result.LocalConfigPath, sources.FileSourceOptions{
-			Name:          "config.local",
-			Priority:      PriorityLocalConfig,
+	// Load all local configs (priority 200, 201, 202, …)
+	if len(result.LocalConfigPaths) == 0 && cfg.RequireLocal {
+		return nil, nil, errors.New("local config file required but not found")
+	}
+	for i, localPath := range result.LocalConfigPaths {
+		source, err := sources.NewFileSource(localPath, sources.FileSourceOptions{
+			Name:          fmt.Sprintf("config.local.%d", i),
+			Priority:      PriorityLocalConfig + i,
 			WatchEnabled:  true,
 			ExpandEnvVars: true,
 			RequireFile:   cfg.RequireLocal,
@@ -208,17 +228,15 @@ func DiscoverAndLoadConfigs(cfg AutoDiscoveryConfig) (Confy, *AutoDiscoveryResul
 		})
 		if err != nil {
 			if cfg.RequireLocal {
-				return nil, nil, fmt.Errorf("failed to create local config source: %w", err)
+				return nil, nil, fmt.Errorf("failed to create local config source %q: %w", localPath, err)
 			}
-		} else {
-			if err := confy.LoadFrom(source); err != nil {
-				if cfg.RequireLocal {
-					return nil, nil, fmt.Errorf("failed to load local config: %w", err)
-				}
+			continue
+		}
+		if err := confy.LoadFrom(source); err != nil {
+			if cfg.RequireLocal {
+				return nil, nil, fmt.Errorf("failed to load local config %q: %w", localPath, err)
 			}
 		}
-	} else if cfg.RequireLocal {
-		return nil, nil, errors.New("local config file required but not found")
 	}
 
 	// Load environment variable source if enabled
@@ -292,51 +310,51 @@ func DiscoverAndLoadConfigs(cfg AutoDiscoveryConfig) (Confy, *AutoDiscoveryResul
 	return confy, result, nil
 }
 
-// discoverConfigFiles searches for config files in the specified paths.
+// discoverConfigFiles searches for config files in all specified paths.
 func discoverConfigFiles(cfg AutoDiscoveryConfig) (*AutoDiscoveryResult, error) {
 	result := &AutoDiscoveryResult{
 		AppName: cfg.AppName,
 	}
 
-	// Search in each path
+	// Search in ALL paths — do not stop on first match.
 	for _, searchPath := range cfg.SearchPaths {
-		// Clean and normalize path
 		searchPath = filepath.Clean(searchPath)
+		// Errors in individual paths are non-fatal; continue searching.
+		_, _ = searchInPathHierarchy(searchPath, cfg, result)
+	}
 
-		// Try to find configs in this path and parent directories
-		found, err := searchInPathHierarchy(searchPath, cfg, result)
-		if err != nil {
-			continue
-		}
+	// Deduplicate paths in case overlapping hierarchies found the same file.
+	result.BaseConfigPaths = dedup(result.BaseConfigPaths)
+	result.LocalConfigPaths = dedup(result.LocalConfigPaths)
 
-		if found {
-			return result, nil
+	// If nothing was found and configs are required, return an error.
+	if len(result.BaseConfigPaths) == 0 && len(result.LocalConfigPaths) == 0 {
+		if cfg.RequireBase || cfg.RequireLocal {
+			return nil, errors.New("config files not found in search paths")
 		}
 	}
 
-	// If we didn't find anything and it's not required, return empty result
-	if !cfg.RequireBase && !cfg.RequireLocal {
-		return result, nil
-	}
-
-	return nil, errors.New("config files not found in search paths")
+	return result, nil
 }
 
 // searchInPathHierarchy searches for config files in a path and its parents.
+// It walks up from startPath until it finds at least one config or hits MaxDepth.
+// Found paths are appended to result so that multiple search paths accumulate.
 func searchInPathHierarchy(startPath string, cfg AutoDiscoveryConfig, result *AutoDiscoveryResult) (bool, error) {
 	currentPath := startPath
 	depth := 0
+	found := false
 
 	for depth < cfg.MaxDepth {
-		// Check if we've exceeded max depth
-
 		// Look for base config files
 		for _, configName := range cfg.ConfigNames {
 			configPath := filepath.Join(currentPath, configName)
 			if fileExists(configPath) {
-				result.BaseConfigPath = configPath
-				result.WorkingDirectory = currentPath
-
+				result.BaseConfigPaths = append(result.BaseConfigPaths, configPath)
+				if result.WorkingDirectory == "" {
+					result.WorkingDirectory = currentPath
+				}
+				found = true
 				break
 			}
 		}
@@ -345,28 +363,27 @@ func searchInPathHierarchy(startPath string, cfg AutoDiscoveryConfig, result *Au
 		for _, localName := range cfg.LocalConfigNames {
 			localPath := filepath.Join(currentPath, localName)
 			if fileExists(localPath) {
-				result.LocalConfigPath = localPath
+				result.LocalConfigPaths = append(result.LocalConfigPaths, localPath)
 				if result.WorkingDirectory == "" {
 					result.WorkingDirectory = currentPath
 				}
+				found = true
 			}
 		}
 
 		// Check if this looks like a monorepo (has apps/ directory)
-		appsDir := filepath.Join(currentPath, "apps")
-		if dirExists(appsDir) {
+		if dirExists(filepath.Join(currentPath, "apps")) {
 			result.IsMonorepo = true
 		}
 
-		// If we found at least one config, we're done
-		if result.BaseConfigPath != "" || result.LocalConfigPath != "" {
+		// Stop walking up once we found something at this directory level.
+		if found {
 			return true, nil
 		}
 
 		// Move to parent directory
 		parentPath := filepath.Dir(currentPath)
 		if parentPath == currentPath {
-			// Reached root
 			break
 		}
 
@@ -525,15 +542,15 @@ func LoadConfigWithAppScope(appName string, logger logger.Logger, errorHandler e
 
 	// Log discovery results
 	if logger != nil {
-		if result.BaseConfigPath != "" {
+		for _, p := range result.BaseConfigPaths {
 			logger.Info("discovered base config",
-				F("path", result.BaseConfigPath),
+				F("path", p),
 			)
 		}
 
-		if result.LocalConfigPath != "" {
+		for _, p := range result.LocalConfigPaths {
 			logger.Info("discovered local config",
-				F("path", result.LocalConfigPath),
+				F("path", p),
 			)
 		}
 
@@ -565,6 +582,22 @@ func dirExists(path string) bool {
 	}
 
 	return info.IsDir()
+}
+
+// dedup removes duplicate strings from a slice while preserving order.
+func dedup(paths []string) []string {
+	if len(paths) <= 1 {
+		return paths
+	}
+	seen := make(map[string]struct{}, len(paths))
+	out := make([]string, 0, len(paths))
+	for _, p := range paths {
+		if _, ok := seen[p]; !ok {
+			seen[p] = struct{}{}
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // LoadConfigFromPaths is a helper that loads config from explicit paths
@@ -633,15 +666,15 @@ func GetConfigSearchInfo(appName string) string {
 	cfg.AppName = appName
 
 	var info strings.Builder
-	info.WriteString(fmt.Sprintf("Config Search Information for app '%s':\n", appName))
-	info.WriteString(fmt.Sprintf("  Working Directory: %s\n", cwd))
-	info.WriteString(fmt.Sprintf("  Base Config Names: %v\n", cfg.ConfigNames))
-	info.WriteString(fmt.Sprintf("  Local Config Names: %v\n", cfg.LocalConfigNames))
-	info.WriteString(fmt.Sprintf("  Max Search Depth: %d parent directories\n", cfg.MaxDepth))
-	info.WriteString(fmt.Sprintf("  App Scoping: %v\n", cfg.EnableAppScoping))
+	fmt.Fprintf(&info, "Config Search Information for app '%s':\n", appName)
+	fmt.Fprintf(&info, "  Working Directory: %s\n", cwd)
+	fmt.Fprintf(&info, "  Base Config Names: %v\n", cfg.ConfigNames)
+	fmt.Fprintf(&info, "  Local Config Names: %v\n", cfg.LocalConfigNames)
+	fmt.Fprintf(&info, "  Max Search Depth: %d parent directories\n", cfg.MaxDepth)
+	fmt.Fprintf(&info, "  App Scoping: %v\n", cfg.EnableAppScoping)
 
 	if cfg.EnableAppScoping && appName != "" {
-		info.WriteString(fmt.Sprintf("  App-Scoped Key: apps.%s\n", appName))
+		fmt.Fprintf(&info, "  App-Scoped Key: apps.%s\n", appName)
 	}
 
 	return info.String()
