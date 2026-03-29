@@ -365,8 +365,11 @@ func (es *EnvSource) transformKey(envKey string) string {
 	if es.options.KeyTransform != nil {
 		key = es.options.KeyTransform(key)
 	} else {
-		// Default transformation: preserve case and replace separators with dots
-		key = strings.ReplaceAll(key, es.separator, ".")
+		// Default transformation: lowercase and replace separators with dots.
+		// Environment variable names are conventionally UPPER_CASE while YAML
+		// keys are lower_case, so we normalise to lowercase to ensure env
+		// overrides merge correctly with file-sourced configuration.
+		key = strings.ToLower(strings.ReplaceAll(key, es.separator, "."))
 	}
 
 	return key
@@ -464,7 +467,9 @@ func (es *EnvSource) setNestedValue(config map[string]any, key string, value any
 // checkRequiredVars checks that all required environment variables are present.
 func (es *EnvSource) checkRequiredVars(config map[string]any) error {
 	for _, required := range es.options.RequiredVars {
-		if !es.hasNestedKey(config, required) {
+		// Keys in config are lowercased by transformKey, so normalise the
+		// required var name to lowercase before lookup.
+		if !es.hasNestedKey(config, strings.ToLower(required)) {
 			return configcore.ErrConfigError("required environment variable missing: "+required, nil)
 		}
 	}

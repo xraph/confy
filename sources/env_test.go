@@ -121,17 +121,17 @@ func TestEnvSource_Load(t *testing.T) {
 		t.Fatal("Load() returned nil data")
 	}
 
-	// Check loaded values
-	if val, ok := data["STRING"].(string); !ok || val != "value" {
-		t.Errorf("data[STRING] = %v, want value", data["STRING"])
+	// Check loaded values (keys are lowercased by default transform)
+	if val, ok := data["string"].(string); !ok || val != "value" {
+		t.Errorf("data[string] = %v, want value", data["string"])
 	}
 
-	if val, ok := data["INT"].(string); !ok || val != "42" {
-		t.Errorf("data[INT] = %v, want 42", data["INT"])
+	if val, ok := data["int"].(string); !ok || val != "42" {
+		t.Errorf("data[int] = %v, want 42", data["int"])
 	}
 
-	if val, ok := data["BOOL"].(string); !ok || val != "true" {
-		t.Errorf("data[BOOL] = %v, want true", data["BOOL"])
+	if val, ok := data["bool"].(string); !ok || val != "true" {
+		t.Errorf("data[bool] = %v, want true", data["bool"])
 	}
 }
 
@@ -154,17 +154,17 @@ func TestEnvSource_Load_WithoutPrefix(t *testing.T) {
 	}
 
 	// Should load all environment variables including NO_PREFIX_VAR
-	// The key gets transformed from NO_PREFIX_VAR to NO.PREFIX.VAR due to separator replacement
-	if noData, ok := data["NO"].(map[string]any); ok {
-		if prefixData, ok := noData["PREFIX"].(map[string]any); ok {
-			if val, ok := prefixData["VAR"].(string); !ok || val != "test_value" {
-				t.Errorf("data[NO][PREFIX][VAR] = %v, want test_value", prefixData["VAR"])
+	// The key gets transformed from NO_PREFIX_VAR to no.prefix.var due to separator replacement + lowercasing
+	if noData, ok := data["no"].(map[string]any); ok {
+		if prefixData, ok := noData["prefix"].(map[string]any); ok {
+			if val, ok := prefixData["var"].(string); !ok || val != "test_value" {
+				t.Errorf("data[no][prefix][var] = %v, want test_value", prefixData["var"])
 			}
 		} else {
-			t.Errorf("NO.PREFIX not found in data: %+v", noData)
+			t.Errorf("no.prefix not found in data: %+v", noData)
 		}
 	} else {
-		t.Errorf("NO not found in data: %+v", data)
+		t.Errorf("no not found in data: %+v", data)
 	}
 }
 
@@ -187,17 +187,17 @@ func TestEnvSource_Load_WithSeparator(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	// Check nested structure
-	if dbData, ok := data["DB"].(map[string]any); ok {
-		if host, ok := dbData["HOST"].(string); !ok || host != "localhost" {
-			t.Errorf("DB.HOST = %v, want localhost", dbData["HOST"])
+	// Check nested structure (keys are lowercased by default transform)
+	if dbData, ok := data["db"].(map[string]any); ok {
+		if host, ok := dbData["host"].(string); !ok || host != "localhost" {
+			t.Errorf("db.host = %v, want localhost", dbData["host"])
 		}
 
-		if port, ok := dbData["PORT"].(string); !ok || port != "5432" {
-			t.Errorf("DB.PORT = %v, want 5432", dbData["PORT"])
+		if port, ok := dbData["port"].(string); !ok || port != "5432" {
+			t.Errorf("db.port = %v, want 5432", dbData["port"])
 		}
 	} else {
-		t.Error("DB data not properly nested")
+		t.Error("db data not properly nested")
 	}
 }
 
@@ -223,7 +223,7 @@ func TestEnvSource_Get(t *testing.T) {
 			t.Fatalf("Load() error = %v", err)
 		}
 
-		value, ok := data["KEY"]
+		value, ok := data["key"]
 		if !ok {
 			t.Fatal("Load() did not return existing key")
 		}
@@ -239,7 +239,7 @@ func TestEnvSource_Get(t *testing.T) {
 			t.Fatalf("Load() error = %v", err)
 		}
 
-		_, ok := data["NONEXISTENT"]
+		_, ok := data["nonexistent"]
 		if ok {
 			t.Error("Load() should not return non-existent key")
 		}
@@ -298,8 +298,8 @@ func TestEnvSource_ValueTransform(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	if val, ok := data["VALUE"].(string); !ok || val != "original_TRANSFORMED" {
-		t.Errorf("VALUE = %v, want original_TRANSFORMED", data["VALUE"])
+	if val, ok := data["value"].(string); !ok || val != "original_TRANSFORMED" {
+		t.Errorf("value = %v, want original_TRANSFORMED", data["value"])
 	}
 }
 
@@ -332,20 +332,20 @@ func TestEnvSource_TypeConversion(t *testing.T) {
 	}
 
 	t.Run("convert int", func(t *testing.T) {
-		if val, ok := data["INT"].(int); !ok || val != 42 {
-			t.Errorf("INT = %v (%T), want 42 (int)", data["INT"], data["INT"])
+		if val, ok := data["int"].(int); !ok || val != 42 {
+			t.Errorf("int = %v (%T), want 42 (int)", data["int"], data["int"])
 		}
 	})
 
 	t.Run("convert float", func(t *testing.T) {
-		if val, ok := data["FLOAT"].(float64); !ok || val != 3.14 {
-			t.Errorf("FLOAT = %v (%T), want 3.14 (float64)", data["FLOAT"], data["FLOAT"])
+		if val, ok := data["float"].(float64); !ok || val != 3.14 {
+			t.Errorf("float = %v (%T), want 3.14 (float64)", data["float"], data["float"])
 		}
 	})
 
 	t.Run("convert bool", func(t *testing.T) {
-		if val, ok := data["BOOL"].(bool); !ok || val != true {
-			t.Errorf("BOOL = %v (%T), want true (bool)", data["BOOL"], data["BOOL"])
+		if val, ok := data["bool"].(bool); !ok || val != true {
+			t.Errorf("bool = %v (%T), want true (bool)", data["bool"], data["bool"])
 		}
 	})
 }
@@ -418,7 +418,7 @@ func TestEnvSource_SecretVars(t *testing.T) {
 
 	// Secret vars should be marked somehow or handled specially
 	// (implementation dependent)
-	if _, ok := data["PASSWORD"]; !ok {
+	if _, ok := data["password"]; !ok {
 		t.Error("Secret var not loaded")
 	}
 }
@@ -733,28 +733,28 @@ func TestEnvSource_ComplexNesting(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	// Check nested structure
-	db, ok := data["DB"].(map[string]any)
+	// Check nested structure (keys are lowercased by default transform)
+	db, ok := data["db"].(map[string]any)
 	if !ok {
-		t.Fatal("DB not found or not a map")
+		t.Fatal("db not found or not a map")
 	}
 
-	master, ok := db["MASTER"].(map[string]any)
+	master, ok := db["master"].(map[string]any)
 	if !ok {
-		t.Fatal("DB.MASTER not found or not a map")
+		t.Fatal("db.master not found or not a map")
 	}
 
-	if host, ok := master["HOST"].(string); !ok || host != "master.db" {
-		t.Errorf("DB.MASTER.HOST = %v, want master.db", master["HOST"])
+	if host, ok := master["host"].(string); !ok || host != "master.db" {
+		t.Errorf("db.master.host = %v, want master.db", master["host"])
 	}
 
-	replica, ok := db["REPLICA"].(map[string]any)
+	replica, ok := db["replica"].(map[string]any)
 	if !ok {
-		t.Fatal("DB.REPLICA not found or not a map")
+		t.Fatal("db.replica not found or not a map")
 	}
 
-	if port, ok := replica["PORT"].(string); !ok || port != "5433" {
-		t.Errorf("DB.REPLICA.PORT = %v, want 5433", replica["PORT"])
+	if port, ok := replica["port"].(string); !ok || port != "5433" {
+		t.Errorf("db.replica.port = %v, want 5433", replica["port"])
 	}
 }
 
@@ -784,21 +784,21 @@ func TestEnvSource_MixedTypes(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	// Verify types
-	if _, ok := data["STRING"].(string); !ok {
-		t.Errorf("STRING should be string, got %T", data["STRING"])
+	// Verify types (keys are lowercased by default transform)
+	if _, ok := data["string"].(string); !ok {
+		t.Errorf("string should be string, got %T", data["string"])
 	}
 
-	if _, ok := data["INT"].(int); !ok {
-		t.Errorf("INT should be int, got %T", data["INT"])
+	if _, ok := data["int"].(int); !ok {
+		t.Errorf("int should be int, got %T", data["int"])
 	}
 
-	if _, ok := data["FLOAT"].(float64); !ok {
-		t.Errorf("FLOAT should be float64, got %T", data["FLOAT"])
+	if _, ok := data["float"].(float64); !ok {
+		t.Errorf("float should be float64, got %T", data["float"])
 	}
 
-	if _, ok := data["BOOL"].(bool); !ok {
-		t.Errorf("BOOL should be bool, got %T", data["BOOL"])
+	if _, ok := data["bool"].(bool); !ok {
+		t.Errorf("bool should be bool, got %T", data["bool"])
 	}
 }
 
