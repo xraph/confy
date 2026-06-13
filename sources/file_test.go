@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -602,6 +603,42 @@ func TestFileSource_Backup(t *testing.T) {
 		} else {
 			t.Errorf("Stat(backup) error = %v", err)
 		}
+	}
+}
+
+func TestFileSource_CreateBackup_WritesIntoBackupDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	testFile := filepath.Join(tmpDir, "config.yaml")
+	backupDir := filepath.Join(tmpDir, "backups")
+	if err := os.WriteFile(testFile, []byte("key: value\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	source, err := NewFileSource(testFile, FileSourceOptions{
+		BackupEnabled: true,
+		BackupDir:     backupDir,
+	})
+	if err != nil {
+		t.Fatalf("NewFileSource() error = %v", err)
+	}
+
+	fs, ok := source.(*FileSource)
+	if !ok {
+		t.Fatalf("expected *FileSource, got %T", source)
+	}
+	if err := fs.createBackup([]byte("key: value\n")); err != nil {
+		t.Fatalf("createBackup() error = %v", err)
+	}
+
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		t.Fatalf("ReadDir(%s) error = %v", backupDir, err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 backup file, got %d", len(entries))
+	}
+	if !strings.HasPrefix(entries[0].Name(), "config.yaml.") || !strings.HasSuffix(entries[0].Name(), ".backup") {
+		t.Errorf("unexpected backup name %q", entries[0].Name())
 	}
 }
 

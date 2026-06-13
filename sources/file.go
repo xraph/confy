@@ -627,12 +627,25 @@ func (fs *FileSource) createBackup(content []byte) error {
 		return err
 	}
 
-	// Create backup filename with timestamp
+	// Create backup filename with timestamp. filepath.Base strips any
+	// directory components from the source path, so the filename can't carry
+	// traversal sequences into BackupDir.
 	filename := filepath.Base(fs.path)
 	timestamp := time.Now().Format("20060102-150405")
 	backupPath := filepath.Join(fs.options.BackupDir, fmt.Sprintf("%s.%s.backup", filename, timestamp))
 
-	// Write backup with restrictive permissions
+	// Defense in depth: ensure the resolved path stays inside BackupDir even if
+	// BackupDir or the source name is somehow crafted to escape it. Rel handles
+	// both absolute and relative BackupDir values.
+	cleanDir := filepath.Clean(fs.options.BackupDir)
+	if rel, err := filepath.Rel(cleanDir, backupPath); err != nil ||
+		rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return fmt.Errorf("backup path %q escapes backup dir %q", backupPath, cleanDir)
+	}
+
+	// Write backup with restrictive permissions. Path is contained by the check
+	// above and the filepath.Base of the source name.
+	// #nosec G703 -- backupPath is confined to BackupDir (validated above) and filename is filepath.Base'd
 	return os.WriteFile(backupPath, content, 0600)
 }
 
