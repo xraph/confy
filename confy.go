@@ -1566,15 +1566,44 @@ func (c *ConfyImpl) getValue(key string) any {
 
 		switch v := current.(type) {
 		case map[string]any:
-			current = v[k]
+			current = mapGetFold(v, k)
 		case map[any]any:
-			current = v[k]
+			current = mapAnyGetFold(v, k)
 		default:
 			return nil
 		}
 	}
 
 	return current
+}
+
+// mapGetFold looks up k in m: exact match first, then case-insensitive. The
+// fallback resolves keys set only via the env source (which lowercases keys)
+// when the caller queries with the original, e.g. camelCase, spelling.
+func mapGetFold(m map[string]any, k string) any {
+	if v, ok := m[k]; ok {
+		return v
+	}
+	for mk, v := range m {
+		if strings.EqualFold(mk, k) {
+			return v
+		}
+	}
+	return nil
+}
+
+// mapAnyGetFold is mapGetFold for map[any]any nodes (produced by some YAML
+// decoders).
+func mapAnyGetFold(m map[any]any, k string) any {
+	if v, ok := m[k]; ok {
+		return v
+	}
+	for mk, v := range m {
+		if ks, ok := mk.(string); ok && strings.EqualFold(ks, k) {
+			return v
+		}
+	}
+	return nil
 }
 
 func (c *ConfyImpl) setValue(key string, value any) {

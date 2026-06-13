@@ -2,7 +2,27 @@ package internal
 
 import (
 	"reflect"
+	"strings"
 )
+
+// findKeyFold returns the actual key in m equal to key — exact match first,
+// then a case-insensitive match. Config keys arrive from heterogeneous sources:
+// files preserve their YAML casing (often camelCase) while the env source
+// lowercases keys by convention. Resolving case-insensitively lets an env
+// override merge into the file key it targets instead of forming a sibling.
+// Exact match is preferred so maps that legitimately distinguish keys by case
+// stay deterministic.
+func findKeyFold(m map[string]any, key string) (string, bool) {
+	if _, ok := m[key]; ok {
+		return key, true
+	}
+	for k := range m {
+		if strings.EqualFold(k, key) {
+			return k, true
+		}
+	}
+	return "", false
+}
 
 // MergeUtil provides utilities for merging configuration data.
 // This consolidates the three duplicate merge implementations in the codebase.
@@ -28,8 +48,11 @@ func (mu *MergeUtil) DeepMerge(existing, new map[string]any) map[string]any {
 	result := mu.DeepCopy(existing)
 
 	for key, newValue := range new {
-		if existingValue, exists := result[key]; exists {
-			result[key] = mu.mergeValues(existingValue, newValue)
+		// Merge into the existing key (keeping its casing) when one matches
+		// case-insensitively, so a lowercased env key folds onto its camelCase
+		// file counterpart rather than creating a duplicate node.
+		if actual, exists := findKeyFold(result, key); exists {
+			result[actual] = mu.mergeValues(result[actual], newValue)
 		} else {
 			result[key] = mu.DeepCopyValue(newValue)
 		}
@@ -46,8 +69,8 @@ func (mu *MergeUtil) MergeInPlace(existing, new map[string]any) {
 	}
 
 	for key, newValue := range new {
-		if existingValue, exists := existing[key]; exists {
-			existing[key] = mu.mergeValues(existingValue, newValue)
+		if actual, exists := findKeyFold(existing, key); exists {
+			existing[actual] = mu.mergeValues(existing[actual], newValue)
 		} else {
 			existing[key] = mu.DeepCopyValue(newValue)
 		}
