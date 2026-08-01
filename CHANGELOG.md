@@ -1,3 +1,9 @@
+## [1.0.2](https://github.com/xraph/confy/compare/v1.0.1...v1.0.2) (2026-08-01)
+
+### Bug Fixes
+
+* unhide docs and refactor types in release notes ([291b35b](https://github.com/xraph/confy/commit/291b35b16756655a8f92d789ce338ca4c8bb1c5b))
+
 ## [1.0.1](https://github.com/xraph/confy/compare/v1.0.0...v1.0.1) (2026-08-01)
 
 ## 1.0.0 (2026-08-01)
