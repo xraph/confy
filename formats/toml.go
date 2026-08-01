@@ -225,7 +225,7 @@ func (tp *TOMLProcessor) ParseToStruct(data []byte, target any) error {
 	}
 
 	targetValue := reflect.ValueOf(target)
-	if targetValue.Kind() != reflect.Ptr || targetValue.Elem().Kind() != reflect.Struct {
+	if targetValue.Kind() != reflect.Pointer || targetValue.Elem().Kind() != reflect.Struct {
 		return internal.ErrConfigError("target must be a pointer to struct", nil)
 	}
 
@@ -332,7 +332,7 @@ func (tp *TOMLProcessor) prepareTOMLData(data any) (any, error) {
 // ValidateStructTags validates TOML struct tags in a target struct.
 func (tp *TOMLProcessor) ValidateStructTags(target any) error {
 	targetType := reflect.TypeOf(target)
-	if targetType.Kind() == reflect.Ptr {
+	if targetType.Kind() == reflect.Pointer {
 		targetType = targetType.Elem()
 	}
 
@@ -373,7 +373,7 @@ func (tp *TOMLProcessor) validateStructFields(structType reflect.Type, path stri
 
 		// Recursively validate nested structs
 		fieldType := field.Type
-		if fieldType.Kind() == reflect.Ptr {
+		if fieldType.Kind() == reflect.Pointer {
 			fieldType = fieldType.Elem()
 		}
 
