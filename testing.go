@@ -990,7 +990,7 @@ func (t *TestConfyImpl) BindWithOptions(key string, target any, options configco
 	// Convert struct defaultValue to map if needed (before checking if data is nil)
 	if options.DefaultValue != nil {
 		defaultVal := reflect.ValueOf(options.DefaultValue)
-		if defaultVal.Kind() == reflect.Struct || (defaultVal.Kind() == reflect.Ptr && defaultVal.Elem().Kind() == reflect.Struct) {
+		if defaultVal.Kind() == reflect.Struct || (defaultVal.Kind() == reflect.Pointer && defaultVal.Elem().Kind() == reflect.Struct) {
 			if converted, err := t.structToMap(options.DefaultValue, options.TagName); err == nil {
 				// Replace DefaultValue with converted map for proper deep merge
 				options.DefaultValue = converted
@@ -1353,7 +1353,7 @@ func (t *TestConfyImpl) structToMap(v any, tagName string) (map[string]any, erro
 	val := reflect.ValueOf(v)
 
 	// Handle pointer to struct
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		if val.IsNil() {
 			return nil, errors.New("cannot convert nil pointer to map")
 		}
@@ -1438,7 +1438,7 @@ func (t *TestConfyImpl) structToMap(v any, tagName string) (map[string]any, erro
 
 func (t *TestConfyImpl) bindValue(value any, target any) error {
 	targetValue := reflect.ValueOf(target)
-	if targetValue.Kind() != reflect.Ptr || targetValue.Elem().Kind() != reflect.Struct {
+	if targetValue.Kind() != reflect.Pointer || targetValue.Elem().Kind() != reflect.Struct {
 		return errors.New("target must be a pointer to struct")
 	}
 
@@ -1528,7 +1528,7 @@ func (t *TestConfyImpl) setFieldValue(field reflect.Value, value any) error {
 		if mapVal, ok := value.(map[string]any); ok {
 			return t.bindMapToStruct(mapVal, field)
 		}
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if field.IsNil() {
 			field.Set(reflect.New(field.Type().Elem()))
 		}

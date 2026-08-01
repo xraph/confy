@@ -169,7 +169,7 @@ func (mu *MergeUtil) deepCopyReflect(value any) any {
 	val := reflect.ValueOf(value)
 
 	switch val.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if val.IsNil() {
 			return nil
 		}
