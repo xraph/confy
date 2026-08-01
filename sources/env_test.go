@@ -586,7 +586,12 @@ func TestEnvSourceFactory_Validate(t *testing.T) {
 
 func TestEnvSource_EdgeCases(t *testing.T) {
 	t.Run("empty environment", func(t *testing.T) {
-		source, _ := NewEnvSource("TEST_", EnvSourceOptions{
+		// NewEnvSource filters by its positional prefix argument, not
+		// EnvSourceOptions.Prefix (that field only mirrors config for the
+		// factory path). Use the positional prefix here so this test isn't
+		// sensitive to unrelated "TEST_"-prefixed variables the process
+		// environment happens to carry (e.g. CI runner or shell state).
+		source, _ := NewEnvSource("NONEXISTENT_PREFIX_", EnvSourceOptions{
 			Prefix: "NONEXISTENT_PREFIX_",
 		})
 
