@@ -1,3 +1,9 @@
+## [1.0.3](https://github.com/xraph/confy/compare/v1.0.2...v1.0.3) (2026-09-06)
+
+### Bug Fixes
+
+* **deps:** release the go-utils v1.3.0 bump ([#3](https://github.com/xraph/confy/issues/3)) ([95042ad](https://github.com/xraph/confy/commit/95042ad751c25037420f7e54d4b1928c8cde92cf)), closes [#2](https://github.com/xraph/confy/issues/2)
+
 ## [1.0.2](https://github.com/xraph/confy/compare/v1.0.1...v1.0.2) (2026-08-01)
 
 ### Bug Fixes
