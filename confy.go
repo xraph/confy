@@ -2442,12 +2442,15 @@ func (c *ConfyImpl) mergeMapValue(field reflect.Value, newData map[string]any, o
 
 			// Check if we should deep merge with existing
 			if existingValue := field.MapIndex(keyValue); existingValue.IsValid() && options.DeepMerge {
-				// Deep merge existing struct with new data
-				if err := c.mergeStructValue(existingValue, valueMap, options, joinKey(path, key), st); err != nil {
+				// Deep merge existing struct with new data. A map element can't be
+				// set, so merge into an addressable copy and store that.
+				structInstance.Set(existingValue)
+
+				if err := c.mergeStructValue(structInstance, valueMap, options, joinKey(path, key), st); err != nil {
 					return err
 				}
 
-				merged.SetMapIndex(keyValue, existingValue)
+				merged.SetMapIndex(keyValue, structInstance)
 
 				continue
 			}

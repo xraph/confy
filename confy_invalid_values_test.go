@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xraph/confy/internal"
+	configcore "github.com/xraph/confy/internal"
 	logger "github.com/xraph/go-utils/log"
 )
 
@@ -283,7 +283,7 @@ func TestBindWithOptionsErrorOnMissingReturnsBindError(t *testing.T) {
 	c, log := captureConfy(t)
 	c.Set("x", map[string]any{"int": "ten", "float": "lots"})
 
-	opts := internal.DefaultBindOptions()
+	opts := configcore.DefaultBindOptions()
 	opts.ErrorOnMissing = true
 
 	got := priorTarget()
@@ -397,10 +397,37 @@ func TestBindWithDefaultStructValuedMapEntryDoesNotPanicOnMerge(t *testing.T) {
 			t.Fatalf("warned for %v, want [x.servers.a]", keys)
 		}
 
-		if _, ok := got.Servers["a"]; ok || got.Servers["b"] == nil || got.Servers["b"].N != 3 {
+		if _, ok := got.Servers["a"]; ok || got.Servers["b"] == nil || got.Servers["b"].N != 3 ||
+			got.Servers["keep"] == nil || got.Servers["keep"].N != 1 {
 			t.Fatalf("bound %+v", got.Servers)
 		}
 	})
+}
+
+// An existing struct entry merges with the new keys and reports a bad one, the
+// same as a pointer entry does.
+func TestBindWithDefaultMergesIntoExistingStructMapEntry(t *testing.T) {
+	type byValue struct {
+		Servers map[string]invalidNested `yaml:"servers"`
+	}
+
+	c, log := captureConfy(t)
+	c.Set("x", map[string]any{"servers": map[string]any{
+		"b": map[string]any{"n": "bad", "s": "new"},
+	}})
+
+	got := byValue{Servers: map[string]invalidNested{"b": {N: 1}}}
+	if err := c.BindWithDefault("x", &got, byValue{Servers: map[string]invalidNested{"b": {N: 1}}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if want := (invalidNested{N: 1, S: "new"}); got.Servers["b"] != want {
+		t.Fatalf("Servers[b] = %+v, want %+v", got.Servers["b"], want)
+	}
+
+	if keys := warnKeys(log); !reflect.DeepEqual(keys, []string{"x.servers.b.n"}) {
+		t.Fatalf("warned for %v, want [x.servers.b.n]", keys)
+	}
 }
 
 func TestBindReportsMapProblemsInKeyOrder(t *testing.T) {
