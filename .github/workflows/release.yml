@@ -2,6 +2,16 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Cut this tag (vX.Y.Z) from the selected commit instead of letting semantic-release pick one. Leave empty for the normal semantic-release run.'
+        type: string
+        required: false
+        default: ''
+      dry_run:
+        description: 'Run every check and report what would be released, but publish nothing.'
+        type: boolean
+        default: false
   workflow_run:
     workflows: ["CI"]
     types: [completed]
@@ -14,7 +24,8 @@ permissions:
 
 # Two merges inside one CI cycle would otherwise start two release runs. Both
 # compute the same next version, and the second's CHANGELOG push is rejected
-# non-fast-forward after the first already tagged.
+# non-fast-forward after the first already tagged. A manual tag release shares
+# the group, so it can never race semantic-release either.
 concurrency:
   group: release-${{ github.repository }}
   cancel-in-progress: false
@@ -22,13 +33,125 @@ concurrency:
 jobs:
   release:
     # `branches:` above matches the TRIGGERING run's head_branch, and a fork's
-    # default branch is also `main` — so a green CI run on a fork would otherwise
+    # default branch is also `main`, so a green CI run on a fork would otherwise
     # fire this release. The event and repository checks close that.
+    #
+    # A manual run with no tag still lands here, exactly as it did before the
+    # tag input existed.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && inputs.tag == '') ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     uses: xraph/workflows/.github/workflows/semantic-release.yml@v1
     with:
+      dry-run: ${{ inputs.dry_run == true }}
       warm-go-proxy: true
+
+  # semantic-release only releases for feat, fix, perf, docs, refactor and
+  # revert commits. A dependency bump committed as `chore:` fixes a CVE and
+  # still produces no tag. This job is the way to ship it: dispatch the workflow
+  # with a tag and it tags the commit you picked, once CI has passed on it.
+  #
+  #   gh workflow run release.yml --ref main -f tag=v1.0.4 -f dry_run=true
+  #
+  # CHANGELOG.md is written by semantic-release, so a manual tag does not touch
+  # it. The GitHub release gets generated notes instead.
+  tag-release:
+    name: Manual tag release
+    if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      # Passed through env, never interpolated into a script, because the tag
+      # is typed by whoever dispatches the run.
+      TAG: ${{ inputs.tag }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          SEMVER='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'
+          [[ "$TAG" =~ $SEMVER ]] || fail "'$TAG' is not a semver tag such as v1.2.3 or v1.2.3-rc.1."
+          MAJOR="${BASH_REMATCH[1]}"
+
+          # `go get` rejects v2 and up unless the module path ends in /vN, and
+          # rejects /vN paths on a v0 or v1 tag. Catch it before it is public.
+          MODULE=$(awk '$1 == "module" { print $2; exit }' go.mod)
+          if [ "$MAJOR" -ge 2 ]; then
+            [[ "$MODULE" == *"/v$MAJOR" ]] || fail "$TAG needs the module path to end in /v$MAJOR, but go.mod says $MODULE."
+          elif [[ "$MODULE" =~ /v[0-9]+$ ]]; then
+            fail "go.mod says $MODULE, which only fits a v2 or later tag, not $TAG."
+          fi
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            fail "$TAG already exists. Pick the next version, and never move a published tag."
+          fi
+
+          if [ "$DRY_RUN" != 'true' ] && [ "$GITHUB_REF" != 'refs/heads/main' ]; then
+            fail "Real releases are cut from main, and this run is on $GITHUB_REF. Dry runs can use any ref."
+          fi
+
+          echo "Tag $TAG is free and valid for module $MODULE."
+
+      - name: Require a green CI run on this commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESULT=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --limit 1 \
+            --json status,conclusion \
+            --jq '.[0] | if . == null then "none" elif .status != "completed" then .status else .conclusion end')
+          if [ "$RESULT" != 'success' ]; then
+            echo "::error::CI on $GITHUB_SHA is '$RESULT'. Wait for it to pass, or push a commit that does."
+            exit 1
+          fi
+          echo "CI is green on $GITHUB_SHA."
+
+      - name: Publish the release
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # With no existing tag, gh creates it at --target through the API, so
+          # nothing is pushed from this runner.
+          FLAGS=(--target "$GITHUB_SHA" --title "$TAG" --generate-notes)
+          if [[ "$TAG" == *-* ]]; then
+            FLAGS+=(--prerelease)
+          else
+            FLAGS+=(--latest)
+          fi
+          gh release create "$TAG" "${FLAGS[@]}"
+          {
+            echo "### Manual tag release"
+            echo "- tagged \`$TAG\` at \`$GITHUB_SHA\`"
+            echo "- release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Warm the Go module proxy
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          curl -sSf "https://proxy.golang.org/github.com/${GITHUB_REPOSITORY}/@v/${TAG}.info" || true
+
+      - name: Report the dry run
+        if: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          {
+            echo "### Manual tag release (dry run)"
+            echo "- would tag \`$TAG\` at \`$GITHUB_SHA\`"
+            echo "- every check passed, nothing was published"
+          } >> "$GITHUB_STEP_SUMMARY"
