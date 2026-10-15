@@ -477,3 +477,41 @@ func TestTestConfyImplIsStrictBinder(t *testing.T) {
 		t.Fatalf("err = %v, bound %+v", err, got)
 	}
 }
+
+// An explicit null (`name:` or `name: null`) blanks a string field, the way
+// ToString(nil) always bound it. It leaves an int field alone and isn't
+// reported.
+func TestBindExplicitNull(t *testing.T) {
+	binds := map[string]func(c *ConfyImpl, got *invalidTarget) error{
+		"Bind": func(c *ConfyImpl, got *invalidTarget) error { return c.Bind("x", got) },
+		"BindWithDefault": func(c *ConfyImpl, got *invalidTarget) error {
+			return c.BindWithDefault("x", got, invalidTarget{Name: "default", Int: 7})
+		},
+	}
+
+	for name, bind := range binds {
+		t.Run(name, func(t *testing.T) {
+			c, log := captureConfy(t)
+			c.Set("x", map[string]any{"name": nil, "int": nil, "ratio": nil})
+
+			ratio := 0.5
+			got := invalidTarget{Name: "default", Int: 7, Ratio: &ratio}
+
+			if err := bind(c, &got); err != nil {
+				t.Fatal(err)
+			}
+
+			if got.Name != "" {
+				t.Fatalf("Name = %q, want an explicit null to blank it", got.Name)
+			}
+
+			if got.Int != 7 || got.Ratio != &ratio || ratio != 0.5 {
+				t.Fatalf("bound %+v, want Int and Ratio untouched", got)
+			}
+
+			if keys := warnKeys(log); len(keys) != 0 {
+				t.Fatalf("warned for %v", keys)
+			}
+		})
+	}
+}

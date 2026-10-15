@@ -1854,8 +1854,12 @@ func (c *ConfyImpl) getFieldName(field reflect.StructField) string {
 }
 
 func (c *ConfyImpl) setFieldValue(field reflect.Value, value reflect.Value, path string, st *bindState) error {
-	value, ok := unwrapValue(field, value)
+	value, ok, null := unwrapValue(field, value)
 	if !ok {
+		if null {
+			bindNull(field)
+		}
+
 		return nil
 	}
 
@@ -2346,8 +2350,12 @@ func (c *ConfyImpl) setDefaultValue(field reflect.Value, defaultTag string, fiel
 
 // setFieldValueWithDeepMerge sets field with deep merge support for nested structs.
 func (c *ConfyImpl) setFieldValueWithDeepMerge(field reflect.Value, value reflect.Value, fieldType reflect.StructField, options configcore.BindOptions, path string, st *bindState) error {
-	value, ok := unwrapValue(field, value)
+	value, ok, null := unwrapValue(field, value)
 	if !ok {
+		if null {
+			bindNull(field)
+		}
+
 		return nil
 	}
 

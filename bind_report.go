@@ -105,20 +105,34 @@ func isScalar(t reflect.Type) bool {
 }
 
 // unwrapValue strips interfaces and, unless field is itself an interface,
-// pointers from value. ok is false when there is nothing to bind: an invalid
-// value or a nil pointer, which BindWithDefault produces from a nil pointer
-// field in the defaults struct.
-func unwrapValue(field, value reflect.Value) (reflect.Value, bool) {
+// pointers from value. ok is false when there is nothing to bind. null tells
+// the two reasons apart: it is true for an explicit null in the config (`name:`
+// or `name: null`) and false for a typed nil pointer, which BindWithDefault
+// produces from a nil pointer field in the defaults struct.
+func unwrapValue(field, value reflect.Value) (v reflect.Value, ok, null bool) {
 	for value.IsValid() && (value.Kind() == reflect.Interface ||
 		(value.Kind() == reflect.Pointer && field.Kind() != reflect.Interface)) {
 		if value.IsNil() {
-			return reflect.Value{}, false
+			return reflect.Value{}, false, value.Kind() == reflect.Interface
 		}
 
 		value = value.Elem()
 	}
 
-	return value, value.IsValid()
+	if !value.IsValid() {
+		return reflect.Value{}, false, true
+	}
+
+	return value, true, false
+}
+
+// bindNull applies an explicit null to field. A string field becomes "", which
+// is what ToString(nil) always bound. Every other field keeps its value, and
+// nothing is reported: a null is a choice, not a typo.
+func bindNull(field reflect.Value) {
+	if field.Kind() == reflect.String {
+		field.SetString("")
+	}
 }
 
 // convertScalar sets field from value when field is a scalar kind. handled is

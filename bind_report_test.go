@@ -108,21 +108,30 @@ func TestBindErrorListsEveryField(t *testing.T) {
 func TestUnwrapValue(t *testing.T) {
 	floatField := reflect.ValueOf(new(float64)).Elem()
 
-	if _, ok := unwrapValue(floatField, reflect.ValueOf((*float64)(nil))); ok {
-		t.Fatal("a nil pointer should leave nothing to bind")
+	if _, ok, null := unwrapValue(floatField, reflect.ValueOf((*float64)(nil))); ok || null {
+		t.Fatal("a typed nil pointer should leave nothing to bind and not count as a null")
 	}
 
-	if v, ok := unwrapValue(floatField, reflect.ValueOf(ptr(0.3))); !ok || v.Interface() != 0.3 {
+	nulls := map[string]any{"k": nil}
+	if _, ok, null := unwrapValue(floatField, reflect.ValueOf(nulls).MapIndex(reflect.ValueOf("k"))); ok || !null {
+		t.Fatal("an explicit null map entry should report null")
+	}
+
+	if _, ok, null := unwrapValue(floatField, reflect.ValueOf(nil)); ok || !null {
+		t.Fatal("an invalid value (a null list element) should report null")
+	}
+
+	if v, ok, _ := unwrapValue(floatField, reflect.ValueOf(ptr(0.3))); !ok || v.Interface() != 0.3 {
 		t.Fatalf("got %v, %v; want 0.3, true", v, ok)
 	}
 
 	m := map[string]any{"k": ptr(0.3)}
-	if v, ok := unwrapValue(floatField, reflect.ValueOf(m).MapIndex(reflect.ValueOf("k"))); !ok || v.Interface() != 0.3 {
+	if v, ok, _ := unwrapValue(floatField, reflect.ValueOf(m).MapIndex(reflect.ValueOf("k"))); !ok || v.Interface() != 0.3 {
 		t.Fatalf("map entry: got %v, %v", v, ok)
 	}
 
 	anyField := reflect.ValueOf(new(any)).Elem()
-	if v, _ := unwrapValue(anyField, reflect.ValueOf(ptr(0.3))); v.Kind() != reflect.Pointer {
+	if v, _, _ := unwrapValue(anyField, reflect.ValueOf(ptr(0.3))); v.Kind() != reflect.Pointer {
 		t.Fatal("an interface field should receive the pointer itself")
 	}
 }
