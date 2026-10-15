@@ -1862,9 +1862,27 @@ func (c *ConfyImpl) setFieldValue(field reflect.Value, value reflect.Value) erro
 		}
 
 		return c.setFieldValue(field.Elem(), value)
+	case reflect.Interface:
+		c.setInterfaceValue(field, valueInterface)
 	}
 
 	return nil
+}
+
+// setInterfaceValue assigns value to an interface-typed field. An empty
+// interface takes any value. A non-empty one takes a value only when the value
+// implements it, and is left alone otherwise. Maps and slices are copied so the
+// bound struct never shares them with the loaded configuration.
+func (c *ConfyImpl) setInterfaceValue(field reflect.Value, value any) {
+	switch value.(type) {
+	case map[string]any, []any:
+		value = c.merger.DeepCopyValue(value)
+	}
+
+	source := reflect.ValueOf(value)
+	if source.IsValid() && source.Type().AssignableTo(field.Type()) {
+		field.Set(source)
+	}
 }
 
 func (c *ConfyImpl) setSliceValue(field reflect.Value, slice []any) error {
@@ -2343,6 +2361,9 @@ func (c *ConfyImpl) setFieldValueWithDeepMerge(field reflect.Value, value reflec
 		}
 
 		return c.setFieldValueWithDeepMerge(field.Elem(), value, fieldType, options)
+
+	case reflect.Interface:
+		c.setInterfaceValue(field, valueInterface)
 	}
 
 	return nil

@@ -1,6 +1,7 @@
 package confy
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -325,5 +326,134 @@ func TestBindStruct_EmptyStruct(t *testing.T) {
 	err := m.Bind("", &cfg)
 	if err != nil {
 		t.Errorf("BindStruct() with empty struct error = %v", err)
+	}
+}
+
+type interfaceRule struct {
+	Name  string `yaml:"name"`
+	Value any    `yaml:"value"`
+}
+
+type interfaceFlag struct {
+	Key   string `yaml:"key"`
+	Type  string `yaml:"type"`
+	Value any    `yaml:"value"`
+}
+
+type interfaceFieldConfig struct {
+	Number any                      `yaml:"number"`
+	Text   any                      `yaml:"text"`
+	Nested any                      `yaml:"nested"`
+	List   any                      `yaml:"list"`
+	Items  []any                    `yaml:"items"`
+	Flags  map[string]interfaceFlag `yaml:"flags"`
+	Rules  []interfaceRule          `yaml:"rules"`
+
+	// A non-empty interface takes a value only when the value implements it.
+	Stringer    fmt.Stringer `yaml:"stringer"`
+	NotStringer fmt.Stringer `yaml:"not_stringer"`
+}
+
+func TestBindStruct_InterfaceFields(t *testing.T) {
+	newConfy := func() *ConfyImpl {
+		return &ConfyImpl{
+			converter: internal.NewTypeConverter(),
+			merger:    internal.NewMergeUtil(),
+			data: map[string]any{
+				"extensions": map[string]any{
+					"features": map[string]any{
+						"number": 50,
+						"text":   "hello",
+						"nested": map[string]any{"a": 1, "b": "two"},
+						"list":   []any{1, "two", 3.5},
+						"items":  []any{1, "two", map[string]any{"k": "v"}},
+						"flags": map[string]any{
+							"max-items": map[string]any{
+								"key":   "max-items",
+								"type":  "number",
+								"value": 50,
+							},
+						},
+						"rules": []any{
+							map[string]any{"name": "beta", "value": "on"},
+							map[string]any{"name": "limit", "value": 10},
+						},
+						"stringer":     5 * time.Second,
+						"not_stringer": "plain string",
+					},
+				},
+			},
+		}
+	}
+
+	binders := map[string]func(*ConfyImpl, *interfaceFieldConfig) error{
+		"Bind": func(m *ConfyImpl, cfg *interfaceFieldConfig) error {
+			return m.Bind("extensions.features", cfg)
+		},
+		"BindWithOptions": func(m *ConfyImpl, cfg *interfaceFieldConfig) error {
+			return m.BindWithOptions("extensions.features", cfg, internal.DefaultBindOptions())
+		},
+	}
+
+	for name, bind := range binders {
+		t.Run(name, func(t *testing.T) {
+			m := newConfy()
+
+			var cfg interfaceFieldConfig
+			if err := bind(m, &cfg); err != nil {
+				t.Fatalf("%s() error = %v", name, err)
+			}
+
+			if cfg.Number != 50 {
+				t.Errorf("Number = %#v, want 50", cfg.Number)
+			}
+
+			if cfg.Text != "hello" {
+				t.Errorf("Text = %#v, want hello", cfg.Text)
+			}
+
+			if want := map[string]any{"a": 1, "b": "two"}; !reflect.DeepEqual(cfg.Nested, want) {
+				t.Errorf("Nested = %#v, want %#v", cfg.Nested, want)
+			}
+
+			if want := []any{1, "two", 3.5}; !reflect.DeepEqual(cfg.List, want) {
+				t.Errorf("List = %#v, want %#v", cfg.List, want)
+			}
+
+			if want := []any{1, "two", map[string]any{"k": "v"}}; !reflect.DeepEqual(cfg.Items, want) {
+				t.Errorf("Items = %#v, want %#v", cfg.Items, want)
+			}
+
+			flag := cfg.Flags["max-items"]
+			if flag.Key != "max-items" || flag.Type != "number" {
+				t.Errorf("Flags[max-items] = %#v, want key and type bound", flag)
+			}
+
+			if flag.Value != 50 {
+				t.Errorf("Flags[max-items].Value = %#v, want 50", flag.Value)
+			}
+
+			wantRules := []interfaceRule{{Name: "beta", Value: "on"}, {Name: "limit", Value: 10}}
+			if !reflect.DeepEqual(cfg.Rules, wantRules) {
+				t.Errorf("Rules = %#v, want %#v", cfg.Rules, wantRules)
+			}
+
+			if cfg.Stringer != 5*time.Second {
+				t.Errorf("Stringer = %#v, want 5s", cfg.Stringer)
+			}
+
+			if cfg.NotStringer != nil {
+				t.Errorf("NotStringer = %#v, want nil (string does not implement fmt.Stringer)", cfg.NotStringer)
+			}
+
+			// The bound struct must not alias the loaded configuration.
+			if nested, ok := cfg.Nested.(map[string]any); ok {
+				nested["a"] = "mutated"
+
+				if got := m.Get("extensions.features.nested.a"); got != 1 {
+					t.Errorf("mutating Nested changed the config: nested.a = %#v, want 1", got)
+				}
+			}
+		})
 	}
 }
