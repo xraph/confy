@@ -181,10 +181,10 @@ if sb, ok := cfg.(confy.StrictBinder); ok {
 
 Rules:
 - Bind logs the warning `config: ignoring invalid value` with fields `key`, `value`, `expected` and `error`.
-- A nil pointer field stays nil, and a non-nil one keeps its old target. A list of scalars with a bad element keeps its old value whole. A list of structs keeps every element. A bad map entry is left out and reported. A struct-valued map entry that isn't a mapping is reported, not a panic. Map problems are reported in key order.
+- A pointer to a scalar stays nil on a bad value, and a non-nil one keeps its old target. A pointer to a struct with a bad field inside gets a new pointer with the good fields applied and the bad field at its prior value, and a nil one becomes a non-nil struct. A list of scalars with a bad element keeps its old value whole. A list of structs keeps every element. A bad map entry is left out and reported. A struct-valued map entry that isn't a mapping is reported, not a panic. Map problems are reported in key order.
 - An explicit null (`name:` or `name: null`) sets a string field to "". Any other field keeps its value, with no warning.
 - What gets reported: scalars, pointers to scalars, list elements and map entries. A list, map or struct given a value of the wrong shape (`hosts: "a,b"` into []string, `tls: true` into *TLSConfig) is not reported in this version. The field keeps its value, except that a nil pointer to a struct can come back pointing at an empty struct.
-- BindWithDefault and BindWithOptions log the same warnings. With ErrorOnMissing set they log nothing, bind the whole struct, then return the *BindError.
+- BindWithDefault and BindWithOptions log the same warnings. Only BindWithOptions takes ErrorOnMissing (BindWithDefault hardcodes it false). With it set, BindWithOptions logs nothing, binds the whole struct, then returns the *BindError.
 - BindStrict returns a non-BindError error (such as a missing key) as a real failure.
 - FieldError.Value is a copy for maps and lists, so it is safe to read after the bind.
 - TestConfyImpl.Bind uses the double's own simple binder. TestConfyImpl.BindStrict uses the real one over a deep copy of the test data.

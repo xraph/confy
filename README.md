@@ -125,7 +125,7 @@ config: ignoring invalid value  key=tracing.sample_ratio value=lots expected=flo
 
 Every other field binds as usual. Here's what happens to the rest of a struct:
 
-- A pointer field stays nil when its value is bad. One that already points somewhere keeps pointing there.
+- A pointer to a scalar (`*float64`, `*int`, `*string`) stays nil when its value is bad, and one that already points somewhere keeps its target. A pointer to a struct isn't like that: if a field inside its block is bad, it gets a new pointer with the good fields applied and the bad field at its prior value, and a nil one comes back pointing at a struct.
 - A list of scalars with one bad element keeps its old value whole. A list of structs keeps every element, and the bad field inside it is reported.
 - A bad map entry is left out of the map. A struct-valued entry that isn't a mapping is reported too.
 - Map entries are reported in key order, so the log reads the same on every run.
@@ -133,7 +133,7 @@ Every other field binds as usual. Here's what happens to the rest of a struct:
 
 confy reports scalars, pointers to scalars, list elements and map entries. It doesn't yet report a list, map or struct given a value of the wrong shape, like `hosts: "a,b"` for a `[]string` or `tls: true` for a `*TLSConfig`. That field keeps its value without a warning, except that a nil pointer to a struct can come back pointing at an empty one.
 
-`BindWithDefault` and `BindWithOptions` log the same warnings. Set `ErrorOnMissing: true` on the options and they log nothing. They bind the whole struct and then return the `*BindError` described below.
+`BindWithDefault` and `BindWithOptions` log the same warnings. Only `BindWithOptions` takes `ErrorOnMissing`; `BindWithDefault` always has it off. Set `ErrorOnMissing: true` on the options you pass to `BindWithOptions` and it logs nothing, binds the whole struct, then returns the `*BindError` described below.
 
 ### Upgrading from v1.0.x
 
