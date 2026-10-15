@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/xraph/confy/internal"
 	logger "github.com/xraph/go-utils/log"
 )
 
@@ -213,5 +214,221 @@ func TestBindStrictMissingKeyStillErrors(t *testing.T) {
 	var be *BindError
 	if err == nil || errors.As(err, &be) {
 		t.Fatalf("missing key returned %v, want the existing not-found error", err)
+	}
+}
+
+func TestBindWithDefaultBindsDurationString(t *testing.T) {
+	c, log := captureConfy(t)
+	c.Set("x", map[string]any{"duration": "30s"})
+
+	var got invalidTarget
+	if err := c.BindWithDefault("x", &got, invalidTarget{}); err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Duration != 30*time.Second {
+		t.Fatalf("Duration = %v, want 30s", got.Duration)
+	}
+
+	if keys := warnKeys(log); len(keys) != 0 {
+		t.Fatalf("warned for %v", keys)
+	}
+}
+
+func TestBindWithDefaultIgnoresInvalidValues(t *testing.T) {
+	c, log := captureConfy(t)
+	c.Set("x", map[string]any{"int": "ten", "name": "svc"})
+
+	got := priorTarget()
+	if err := c.BindWithDefault("x", &got, priorTarget()); err != nil {
+		t.Fatalf("BindWithDefault returned %v, want nil", err)
+	}
+
+	if got.Int != 7 || got.Name != "svc" {
+		t.Fatalf("bound %+v", got)
+	}
+
+	if keys := warnKeys(log); !reflect.DeepEqual(keys, []string{"x.int"}) {
+		t.Fatalf("warned for %v, want [x.int]", keys)
+	}
+}
+
+// Deep merge re-binds the struct's current values, which are typed
+// (time.Duration, named ints). Those must not be reported.
+func TestBindWithDefaultDeepMergeDoesNotWarnOnTypedValues(t *testing.T) {
+	type withLevel struct {
+		Level    level         `yaml:"level"`
+		Duration time.Duration `yaml:"duration"`
+		Inner    invalidNested `yaml:"inner"`
+	}
+
+	c, log := captureConfy(t)
+	c.Set("x", map[string]any{"inner": map[string]any{"s": "a"}})
+
+	got := withLevel{Level: 2, Duration: time.Minute, Inner: invalidNested{N: 4}}
+	if err := c.BindWithDefault("x", &got, withLevel{Level: 2, Duration: time.Minute}); err != nil {
+		t.Fatal(err)
+	}
+
+	if keys := warnKeys(log); len(keys) != 0 {
+		t.Fatalf("warned for %v", keys)
+	}
+
+	if got.Level != 2 || got.Duration != time.Minute || got.Inner.S != "a" {
+		t.Fatalf("bound %+v", got)
+	}
+}
+
+func TestBindWithOptionsErrorOnMissingReturnsBindError(t *testing.T) {
+	c, log := captureConfy(t)
+	c.Set("x", map[string]any{"int": "ten", "float": "lots"})
+
+	opts := internal.DefaultBindOptions()
+	opts.ErrorOnMissing = true
+
+	got := priorTarget()
+	err := c.BindWithOptions("x", &got, opts)
+
+	var be *BindError
+	if !errors.As(err, &be) || len(be.Fields) != 2 {
+		t.Fatalf("err = %v, want a *BindError with 2 fields", err)
+	}
+
+	if n := len(log.GetLogsByLevel("WARN")); n != 0 {
+		t.Fatalf("logged %d warnings with ErrorOnMissing, want none", n)
+	}
+}
+
+func TestBindStructValuedMapEntryThatIsNotAMappingDoesNotPanic(t *testing.T) {
+	type byValue struct {
+		Servers map[string]invalidNested `yaml:"servers"`
+	}
+
+	type byPointer struct {
+		Servers map[string]*invalidNested `yaml:"servers"`
+	}
+
+	section := map[string]any{"servers": map[string]any{
+		"a": "oops",
+		"b": map[string]any{"n": 3, "s": "ok"},
+	}}
+
+	t.Run("value", func(t *testing.T) {
+		c, log := captureConfy(t)
+		c.Set("x", section)
+
+		var got byValue
+		if err := c.Bind("x", &got); err != nil {
+			t.Fatal(err)
+		}
+
+		if keys := warnKeys(log); !reflect.DeepEqual(keys, []string{"x.servers.a"}) {
+			t.Fatalf("warned for %v, want [x.servers.a]", keys)
+		}
+
+		if _, ok := got.Servers["a"]; ok || got.Servers["b"].N != 3 {
+			t.Fatalf("bound %+v", got.Servers)
+		}
+	})
+
+	t.Run("pointer", func(t *testing.T) {
+		c, log := captureConfy(t)
+		c.Set("x", section)
+
+		var got byPointer
+		if err := c.Bind("x", &got); err != nil {
+			t.Fatal(err)
+		}
+
+		if keys := warnKeys(log); !reflect.DeepEqual(keys, []string{"x.servers.a"}) {
+			t.Fatalf("warned for %v, want [x.servers.a]", keys)
+		}
+
+		if _, ok := got.Servers["a"]; ok || got.Servers["b"] == nil || got.Servers["b"].N != 3 {
+			t.Fatalf("bound %+v", got.Servers)
+		}
+	})
+}
+
+func TestBindWithDefaultStructValuedMapEntryDoesNotPanicOnMerge(t *testing.T) {
+	type byValue struct {
+		Servers map[string]invalidNested `yaml:"servers"`
+	}
+
+	type byPointer struct {
+		Servers map[string]*invalidNested `yaml:"servers"`
+	}
+
+	section := map[string]any{"servers": map[string]any{
+		"a": "oops",
+		"b": map[string]any{"n": 3, "s": "ok"},
+	}}
+
+	t.Run("value", func(t *testing.T) {
+		c, log := captureConfy(t)
+		c.Set("x", section)
+
+		got := byValue{Servers: map[string]invalidNested{"keep": {N: 1}}}
+		if err := c.BindWithDefault("x", &got, byValue{Servers: map[string]invalidNested{"keep": {N: 1}}}); err != nil {
+			t.Fatal(err)
+		}
+
+		if keys := warnKeys(log); !reflect.DeepEqual(keys, []string{"x.servers.a"}) {
+			t.Fatalf("warned for %v, want [x.servers.a]", keys)
+		}
+
+		if _, ok := got.Servers["a"]; ok || got.Servers["b"].N != 3 || got.Servers["keep"].N != 1 {
+			t.Fatalf("bound %+v", got.Servers)
+		}
+	})
+
+	t.Run("pointer", func(t *testing.T) {
+		c, log := captureConfy(t)
+		c.Set("x", section)
+
+		def := byPointer{Servers: map[string]*invalidNested{"keep": {N: 1}}}
+		got := byPointer{Servers: map[string]*invalidNested{"keep": {N: 1}}}
+
+		if err := c.BindWithDefault("x", &got, def); err != nil {
+			t.Fatal(err)
+		}
+
+		if keys := warnKeys(log); !reflect.DeepEqual(keys, []string{"x.servers.a"}) {
+			t.Fatalf("warned for %v, want [x.servers.a]", keys)
+		}
+
+		if _, ok := got.Servers["a"]; ok || got.Servers["b"] == nil || got.Servers["b"].N != 3 {
+			t.Fatalf("bound %+v", got.Servers)
+		}
+	})
+}
+
+func TestBindReportsMapProblemsInKeyOrder(t *testing.T) {
+	c, _ := captureConfy(t)
+	c.Set("x", map[string]any{"weights": map[string]any{
+		"d": "four", "a": "one", "c": 3, "b": "two",
+	}})
+
+	var want []string
+	for _, k := range []string{"a", "b", "d"} {
+		want = append(want, "x.weights."+k)
+	}
+
+	for range 20 {
+		var got invalidTarget
+
+		var be *BindError
+		if err := c.BindStrict("x", &got); !errors.As(err, &be) {
+			t.Fatalf("err = %v, want a *BindError", err)
+		}
+
+		var keys []string
+		for _, f := range be.Fields {
+			keys = append(keys, f.Key)
+		}
+
+		if !reflect.DeepEqual(keys, want) {
+			t.Fatalf("keys = %v, want %v", keys, want)
+		}
 	}
 }
