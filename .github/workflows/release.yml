@@ -61,6 +61,7 @@ jobs:
     name: Manual tag release
     if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     permissions:
       contents: write
       actions: read
@@ -107,18 +108,48 @@ jobs:
 
           echo "Tag $TAG is free and valid for module $MODULE."
 
-      - name: Require a green CI run on this commit
+      # You will usually dispatch right after merging, while CI is still running
+      # on the merge commit, so a run that is in flight is waited for. A run that
+      # has finished and did not succeed fails the job straight away.
+      - name: Wait for a green CI run on this commit
         shell: bash
         run: |
           set -euo pipefail
-          RESULT=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --limit 1 \
-            --json status,conclusion \
-            --jq '.[0] | if . == null then "none" elif .status != "completed" then .status else .conclusion end')
-          if [ "$RESULT" != 'success' ]; then
-            echo "::error::CI on $GITHUB_SHA is '$RESULT'. Wait for it to pass, or push a commit that does."
-            exit 1
-          fi
-          echo "CI is green on $GITHUB_SHA."
+          GIVE_UP=$((SECONDS + 1500))
+          # A push can be a few seconds ahead of its CI run showing up in the API.
+          NO_RUN_UNTIL=$((SECONDS + 120))
+
+          while :; do
+            RESULT=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --limit 1 \
+              --json status,conclusion \
+              --jq '.[0] | if . == null then "none" elif .status != "completed" then .status else .conclusion end')
+
+            case "$RESULT" in
+              success)
+                echo "CI is green on $GITHUB_SHA."
+                exit 0
+                ;;
+              none)
+                if [ "$SECONDS" -ge "$NO_RUN_UNTIL" ]; then
+                  echo "::error::No CI run exists for $GITHUB_SHA. Push a commit that triggers one."
+                  exit 1
+                fi
+                ;;
+              queued|in_progress|waiting|pending|requested)
+                if [ "$SECONDS" -ge "$GIVE_UP" ]; then
+                  echo "::error::CI on $GITHUB_SHA is still '$RESULT' after 25 minutes. Dispatch again once it finishes."
+                  exit 1
+                fi
+                ;;
+              *)
+                echo "::error::CI on $GITHUB_SHA finished as '$RESULT'. Fix it, or push a commit that passes."
+                exit 1
+                ;;
+            esac
+
+            echo "CI on $GITHUB_SHA is '$RESULT', checking again in 20s."
+            sleep 20
+          done
 
       - name: Publish the release
         if: ${{ !inputs.dry_run }}
