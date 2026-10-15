@@ -242,6 +242,10 @@ func (c *ConfyImpl) convertScalar(field reflect.Value, value any) (bool, error) 
 // with set's result. A pointer to a scalar is only replaced when the value
 // converted, so a bad value never leaves a non-nil pointer to zero behind. A
 // pointer to anything else is always replaced, keeping its good fields.
+//
+// The field gets a new pointer. It never writes through the old one, so a
+// variable the old pointer shared with other code is not changed by a bind.
+// That is on purpose: a bind must not reach past the target it was given.
 func (c *ConfyImpl) setPointer(field reflect.Value, st *bindState, set func(elem reflect.Value) error) error {
 	elem := reflect.New(field.Type().Elem())
 	if !field.IsNil() {

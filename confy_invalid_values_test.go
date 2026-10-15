@@ -614,3 +614,35 @@ func TestBindMapKeyTypes(t *testing.T) {
 		})
 	}
 }
+
+// A pointer field is replaced, never written through. A bad value keeps the old
+// pointer, and a good one swaps in a new pointer, so a variable the old one
+// pointed at is never changed by a bind.
+func TestBindReplacesPointerInsteadOfWritingThrough(t *testing.T) {
+	c, log := captureConfy(t)
+	c.Set("bad", map[string]any{"ratio": "lots"})
+	c.Set("good", map[string]any{"ratio": 0.9})
+
+	shared := 0.5
+	got := invalidTarget{Ratio: &shared}
+
+	if err := c.Bind("bad", &got); err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Ratio != &shared || shared != 0.5 {
+		t.Fatalf("bad value: Ratio = %v -> %v, shared = %v", got.Ratio, *got.Ratio, shared)
+	}
+
+	if keys := warnKeys(log); !reflect.DeepEqual(keys, []string{"bad.ratio"}) {
+		t.Fatalf("warned for %v, want [bad.ratio]", keys)
+	}
+
+	if err := c.Bind("good", &got); err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Ratio == &shared || *got.Ratio != 0.9 || shared != 0.5 {
+		t.Fatalf("good value: Ratio = %v -> %v, shared = %v", got.Ratio, *got.Ratio, shared)
+	}
+}
