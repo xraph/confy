@@ -161,6 +161,17 @@ func bindNull(field reflect.Value) {
 	}
 }
 
+// mapKey converts a config key to keyType. Any string kind works, named ones
+// such as `type env string` included. A config key can't become anything else,
+// so other key types return an error for the caller to report.
+func mapKey(key string, keyType reflect.Type) (reflect.Value, error) {
+	if keyType.Kind() != reflect.String {
+		return reflect.Value{}, fmt.Errorf("unsupported map key type %s", keyType)
+	}
+
+	return reflect.ValueOf(key).Convert(keyType), nil
+}
+
 // convertScalar sets field from value when field is a scalar kind. handled is
 // false for every other kind. On error field is left untouched.
 func (c *ConfyImpl) convertScalar(field reflect.Value, value any) (bool, error) {

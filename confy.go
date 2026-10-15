@@ -1968,7 +1968,13 @@ func (c *ConfyImpl) setMapValue(field reflect.Value, mapData map[string]any, pat
 
 	for _, key := range slices.Sorted(maps.Keys(mapData)) {
 		value := mapData[key]
-		keyValue := reflect.ValueOf(key)
+
+		keyValue, err := mapKey(key, field.Type().Key())
+		if err != nil {
+			st.add(joinKey(path, key), value, field.Type(), err)
+
+			continue
+		}
 
 		// Convert value to the correct type for the map's value type
 		var convertedValue reflect.Value
@@ -2426,7 +2432,13 @@ func (c *ConfyImpl) mergeMapValue(field reflect.Value, newData map[string]any, o
 	// Merge new values
 	for _, key := range slices.Sorted(maps.Keys(newData)) {
 		value := newData[key]
-		keyValue := reflect.ValueOf(key)
+
+		keyValue, err := mapKey(key, field.Type().Key())
+		if err != nil {
+			st.add(joinKey(path, key), value, field.Type(), err)
+
+			continue
+		}
 
 		// Convert value to correct type
 		var convertedValue reflect.Value

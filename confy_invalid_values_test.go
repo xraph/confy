@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -554,5 +555,62 @@ func TestBindErrorValueDoesNotAliasConfig(t *testing.T) {
 
 	if value["a"] != 1 {
 		t.Fatalf("Value changed under the caller: a = %v", value["a"])
+	}
+}
+
+type envName string
+
+// A map keyed by a named string type binds. A key type no config key can hold
+// is reported per entry, not a panic.
+func TestBindMapKeyTypes(t *testing.T) {
+	type named struct {
+		Limits map[envName]int `yaml:"limits"`
+	}
+
+	type intKeyed struct {
+		Limits map[int]int `yaml:"limits"`
+	}
+
+	section := map[string]any{"limits": map[string]any{"dev": 1, "prod": 2}}
+	binds := map[string]func(c *ConfyImpl, target, def any) error{
+		"Bind":            func(c *ConfyImpl, target, _ any) error { return c.Bind("x", target) },
+		"BindWithDefault": func(c *ConfyImpl, target, def any) error { return c.BindWithDefault("x", target, def) },
+	}
+
+	for name, bind := range binds {
+		t.Run(name+"/named", func(t *testing.T) {
+			c, log := captureConfy(t)
+			c.Set("x", section)
+
+			got := named{Limits: map[envName]int{"keep": 9}}
+			if err := bind(c, &got, named{Limits: map[envName]int{"keep": 9}}); err != nil {
+				t.Fatal(err)
+			}
+
+			if got.Limits["dev"] != 1 || got.Limits["prod"] != 2 {
+				t.Fatalf("bound %+v", got.Limits)
+			}
+
+			if keys := warnKeys(log); len(keys) != 0 {
+				t.Fatalf("warned for %v", keys)
+			}
+		})
+
+		t.Run(name+"/int keys", func(t *testing.T) {
+			c, log := captureConfy(t)
+			c.Set("x", section)
+
+			got := intKeyed{Limits: map[int]int{1: 1}}
+			if err := bind(c, &got, intKeyed{Limits: map[int]int{1: 1}}); err != nil {
+				t.Fatal(err)
+			}
+
+			// BindWithDefault can report more: its merge copies the int-keyed
+			// default map with stringified keys.
+			keys := warnKeys(log)
+			if !slices.Contains(keys, "x.limits.dev") || !slices.Contains(keys, "x.limits.prod") {
+				t.Fatalf("warned for %v, want both entries", keys)
+			}
+		})
 	}
 }
