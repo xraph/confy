@@ -459,3 +459,21 @@ func TestBindReportsMapProblemsInKeyOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestTestConfyImplIsStrictBinder(t *testing.T) {
+	tc := NewTestConfyImpl()
+	tc.Set("x", map[string]any{"int": "ten", "name": "ok"})
+
+	sb, ok := tc.(StrictBinder)
+	if !ok {
+		t.Fatal("TestConfyImpl does not implement StrictBinder")
+	}
+
+	got := priorTarget()
+	err := sb.BindStrict("x", &got)
+
+	var be *BindError
+	if !errors.As(err, &be) || be.Fields[0].Key != "x.int" || got.Name != "ok" {
+		t.Fatalf("err = %v, bound %+v", err, got)
+	}
+}

@@ -1015,6 +1015,26 @@ func (t *TestConfyImpl) BindWithOptions(key string, target any, options configco
 	return t.bindValue(data, target)
 }
 
+// BindStrict binds through the real binder over a snapshot of the test data,
+// returning a *BindError for values it could not convert.
+func (t *TestConfyImpl) BindStrict(key string, target any) error {
+	t.mu.RLock()
+	snapshot := make(map[string]any, len(t.data))
+	maps.Copy(snapshot, t.data)
+	t.mu.RUnlock()
+
+	real, ok := New().(*ConfyImpl)
+	if !ok {
+		return ErrConfigError("confy.New did not return a *ConfyImpl", nil)
+	}
+
+	for k, v := range snapshot {
+		real.Set(k, v)
+	}
+
+	return real.BindStrict(key, target)
+}
+
 // =============================================================================
 // WATCH METHODS
 // =============================================================================

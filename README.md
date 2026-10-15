@@ -108,6 +108,51 @@ cfg.WatchChanges(func(change confy.ConfigChange) {
 cfg.Watch(context.Background())
 ```
 
+## Invalid values
+
+`Bind` doesn't fail when a value can't be converted. Say your config has this:
+
+```yaml
+tracing:
+  sample_ratio: "lots"
+```
+
+and you bind it into a struct with a `float64` field. `Bind` returns nil and the field keeps whatever it held before the call, so a value you set in the struct before binding still applies. confy logs one warning for each key it skipped:
+
+```
+config: ignoring invalid value  key=tracing.sample_ratio value=lots expected=float64 error=...
+```
+
+Every other field binds as usual. The same goes for lists, pointers and maps:
+
+- A pointer field stays nil when its value is bad.
+- A list of scalars with one bad element keeps its old value whole. A list of structs keeps every element, and the bad field inside it is reported.
+- A bad map entry is left out of the map. A struct-valued entry that isn't a mapping is reported too.
+- Map entries are reported in key order, so the log reads the same on every run.
+
+`BindWithDefault` and `BindWithOptions` log the same warnings. Set `ErrorOnMissing: true` on the options and they also return the error described below, after the full pass.
+
+### Fail on invalid values
+
+If you'd rather stop at startup than read a log, use `BindStrict`. It binds exactly like `Bind`, logs nothing, and returns a `*confy.BindError` listing every value it skipped. The error comes back after the whole struct is bound, so you see all the problems at once.
+
+`BindStrict` isn't on the `Confy` interface, so reach it through `StrictBinder`. `New` returns a value that satisfies it, and so does `NewTestConfyImpl`.
+
+```go
+var s ServerConfig
+
+if sb, ok := cfg.(confy.StrictBinder); ok {
+    var be *confy.BindError
+    if err := sb.BindStrict("server", &s); errors.As(err, &be) {
+        for _, f := range be.Fields {
+            fmt.Println(f.Key, f.Value, f.Type)
+        }
+    }
+}
+```
+
+`Key` is the full dotted path (`server.port`, or `server.hosts[1]` for a list element), `Value` is what the config held, and `Type` is the Go type confy wanted. `Err` has the converter's own error. Any error that isn't a `*BindError`, such as a missing key, is a real failure.
+
 ## Sources
 
 confy supports multiple configuration sources out of the box:
@@ -332,6 +377,17 @@ func TestMyHandler(t *testing.T) {
     handler := NewHandler(cfg)
     // ...
 }
+```
+
+`TestConfyImpl` implements `StrictBinder` too, so you can test how your code reacts to a bad value:
+
+```go
+cfg := confy.NewTestConfyImpl()
+cfg.Set("server", map[string]any{"port": "eighty"})
+
+var be *confy.BindError
+err := cfg.(confy.StrictBinder).BindStrict("server", &s)
+// errors.As(err, &be) is true, be.Fields[0].Key is "server.port"
 ```
 
 Or use the builder:
