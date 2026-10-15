@@ -646,3 +646,34 @@ func TestBindReplacesPointerInsteadOfWritingThrough(t *testing.T) {
 		t.Fatalf("good value: Ratio = %v -> %v, shared = %v", got.Ratio, *got.Ratio, shared)
 	}
 }
+
+// The test double's BindStrict binds from a deep snapshot, so a Set on a nested
+// key during the bind doesn't race with it. Run with -race.
+func TestTestConfyImplBindStrictSnapshotIsDeep(t *testing.T) {
+	tc := NewTestConfyImpl()
+	tc.Set("x", map[string]any{"nested": map[string]any{"n": 1, "s": "a"}})
+
+	sb, ok := tc.(StrictBinder)
+	if !ok {
+		t.Fatal("TestConfyImpl does not implement StrictBinder")
+	}
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for i := range 100 {
+			tc.Set("x.nested.n", i)
+		}
+	}()
+
+	for range 100 {
+		var got invalidTarget
+		if err := sb.BindStrict("x", &got); err != nil {
+			t.Error(err)
+		}
+	}
+
+	<-done
+}
