@@ -62,8 +62,34 @@ type bindState struct {
 	problems []FieldError
 }
 
+// add records one value that could not be converted. Maps and lists are copied,
+// because the caller reads Value after the bind has released the lock and Set
+// can change the loaded config in place.
 func (s *bindState) add(key string, value any, t reflect.Type, err error) {
-	s.problems = append(s.problems, FieldError{Key: key, Value: value, Type: t.String(), Err: err})
+	s.problems = append(s.problems, FieldError{Key: key, Value: copyConfigValue(value), Type: t.String(), Err: err})
+}
+
+// copyConfigValue deep-copies the maps and lists a loaded config is made of.
+// Every other value is returned as is.
+func copyConfigValue(value any) any {
+	switch v := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for k, item := range v {
+			out[k] = copyConfigValue(item)
+		}
+
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, item := range v {
+			out[i] = copyConfigValue(item)
+		}
+
+		return out
+	default:
+		return value
+	}
 }
 
 func (s *bindState) count() int { return len(s.problems) }

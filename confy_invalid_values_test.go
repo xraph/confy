@@ -2,6 +2,7 @@ package confy
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -513,5 +514,45 @@ func TestBindExplicitNull(t *testing.T) {
 				t.Fatalf("warned for %v", keys)
 			}
 		})
+	}
+}
+
+// FieldError.Value must not share maps or lists with the loaded config. A
+// caller reads it after the bind has released the lock, while Set can change
+// the nested map in place. Run with -race.
+func TestBindErrorValueDoesNotAliasConfig(t *testing.T) {
+	c, _ := captureConfy(t)
+	c.Set("x", map[string]any{"int": map[string]any{"a": 1, "list": []any{map[string]any{"b": 2}}}})
+
+	var got invalidTarget
+
+	var be *BindError
+	if err := c.BindStrict("x", &got); !errors.As(err, &be) || len(be.Fields) != 1 {
+		t.Fatalf("err = %v, want a *BindError with 1 field", err)
+	}
+
+	value, ok := be.Fields[0].Value.(map[string]any)
+	if !ok {
+		t.Fatalf("Value = %#v, want the mapping", be.Fields[0].Value)
+	}
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for i := range 100 {
+			c.Set("x.int.a", i)
+		}
+	}()
+
+	for range 100 {
+		_ = fmt.Sprint(value["a"], value["list"])
+	}
+
+	<-done
+
+	if value["a"] != 1 {
+		t.Fatalf("Value changed under the caller: a = %v", value["a"])
 	}
 }
