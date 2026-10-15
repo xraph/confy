@@ -123,14 +123,27 @@ and you bind it into a struct with a `float64` field. `Bind` returns nil and the
 config: ignoring invalid value  key=tracing.sample_ratio value=lots expected=float64 error=...
 ```
 
-Every other field binds as usual. The same goes for lists, pointers and maps:
+Every other field binds as usual. Here's what happens to the rest of a struct:
 
-- A pointer field stays nil when its value is bad.
+- A pointer field stays nil when its value is bad. One that already points somewhere keeps pointing there.
 - A list of scalars with one bad element keeps its old value whole. A list of structs keeps every element, and the bad field inside it is reported.
 - A bad map entry is left out of the map. A struct-valued entry that isn't a mapping is reported too.
 - Map entries are reported in key order, so the log reads the same on every run.
+- An explicit null (`name:` or `name: null`) sets a string field to `""`. Any other field keeps its value, and you get no warning.
 
-`BindWithDefault` and `BindWithOptions` log the same warnings. Set `ErrorOnMissing: true` on the options and they also return the error described below, after the full pass.
+confy reports scalars, pointers to scalars, list elements and map entries. It doesn't yet report a list, map or struct given a value of the wrong shape, like `hosts: "a,b"` for a `[]string` or `tls: true` for a `*TLSConfig`. That field keeps its value without a warning, except that a nil pointer to a struct can come back pointing at an empty one.
+
+`BindWithDefault` and `BindWithOptions` log the same warnings. Set `ErrorOnMissing: true` on the options and they log nothing. They bind the whole struct and then return the `*BindError` described below.
+
+### Upgrading from v1.0.x
+
+Some values bind differently now:
+
+- `BindWithDefault` binds duration strings such as `"30s"`, which it used to drop. It reads an int bound into a `time.Duration` as seconds, the way `Bind` always has.
+- Map values go through the same converter as struct fields. An int into a `map[string]time.Duration` is seconds, and an int into a `map[string]string` becomes `"5"`.
+- Under `BindWithDefault`, a struct entry that's already in a map takes the new keys and keeps the rest. It used to keep the old entry whole.
+- A pointer field gets a new pointer when its value binds. confy used to write through the old one, so a variable you shared with that pointer changed too. Now it doesn't.
+- A map keyed by a named string type (`map[envName]int`) binds. It used to panic. A map keyed by anything else, such as `map[int]int`, can't hold a config key, so each entry is reported and skipped.
 
 ### Fail on invalid values
 
@@ -382,13 +395,21 @@ func TestMyHandler(t *testing.T) {
 `TestConfyImpl` implements `StrictBinder` too, so you can test how your code reacts to a bad value:
 
 ```go
-cfg := confy.NewTestConfyImpl()
-cfg.Set("server", map[string]any{"port": "eighty"})
+func TestServerRejectsBadPort(t *testing.T) {
+    cfg := confy.NewTestConfyImpl()
+    cfg.Set("server", map[string]any{"port": "eighty"})
 
-var be *confy.BindError
-err := cfg.(confy.StrictBinder).BindStrict("server", &s)
-// errors.As(err, &be) is true, be.Fields[0].Key is "server.port"
+    var s ServerConfig
+    err := cfg.(confy.StrictBinder).BindStrict("server", &s)
+
+    var be *confy.BindError
+    if !errors.As(err, &be) || be.Fields[0].Key != "server.port" {
+        t.Fatalf("got %v, want a BindError for server.port", err)
+    }
+}
 ```
+
+`TestConfyImpl.Bind` still uses the double's own simple binder. Only `BindStrict` goes through the real one.
 
 Or use the builder:
 
