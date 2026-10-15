@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/xraph/confy/compare/v1.0.4...v1.1.0) (2026-10-15)
+
+### Features
+
+* **bind:** report config values that can't convert ([#7](https://github.com/xraph/confy/issues/7)) ([78bea0d](https://github.com/xraph/confy/commit/78bea0d6b6dcd965d945823ca2be5d7d3657939e))
+
 ## [1.0.3](https://github.com/xraph/confy/compare/v1.0.2...v1.0.3) (2026-09-06)
 
 ### Bug Fixes
