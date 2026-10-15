@@ -108,6 +108,28 @@ func NewValidator(config ValidationConfig) Validator
 func ValidateSchema(data interface{}, schema Schema) error
 ```
 
+### Binding and Invalid Values
+
+```go
+// Report types (bind_report.go)
+type FieldError struct {
+    Key   string // full dotted path, e.g. "server.port" or "x.list[1]"
+    Value any    // the value as it appeared in the config
+    Type  string // the Go type confy wanted, e.g. "float64"
+    Err   error  // the converter's error
+}
+
+type BindError struct{ Fields []FieldError } // Unwrap() []error
+
+type StrictBinder interface {
+    BindStrict(key string, target any) error
+}
+
+// *ConfyImpl and *TestConfyImpl implement StrictBinder.
+// confy.Confy itself has no BindStrict method; type-assert to StrictBinder.
+func (c *ConfyImpl) BindStrict(key string, target any) error
+```
+
 ## Usage Examples
 
 ### Creating Manager with Sources
@@ -135,6 +157,44 @@ func createConfigManager() (config.ConfigManager, error) {
     return mgr, nil
 }
 ```
+
+### Binding Invalid Values
+
+```go
+var s ServerConfig
+
+// Bind returns nil for a value it can't convert. The field keeps its old
+// value and confy logs one warning per key:
+//   config: ignoring invalid value  key=server.port value=eighty expected=int error=...
+_ = cfg.Bind("server", &s)
+
+// BindStrict binds the same way, logs nothing, and returns *BindError.
+if sb, ok := cfg.(confy.StrictBinder); ok {
+    var be *confy.BindError
+    if err := sb.BindStrict("server", &s); errors.As(err, &be) {
+        for _, f := range be.Fields {
+            fmt.Println(f.Key, f.Value, f.Type)
+        }
+    }
+}
+```
+
+Rules:
+- Bind logs the warning `config: ignoring invalid value` with fields `key`, `value`, `expected` and `error`.
+- A pointer to a scalar stays nil on a bad value, and a non-nil one keeps its old target. A pointer to a struct with a bad field inside gets a new pointer with the good fields applied and the bad field at its prior value, and a nil one becomes a non-nil struct. A list of scalars with a bad element keeps its old value whole. A list of structs keeps every element. A bad map entry is left out and reported. A struct-valued map entry that isn't a mapping is reported, not a panic. Map problems are reported in key order.
+- An explicit null (`name:` or `name: null`) sets a string field to "". Any other field keeps its value, with no warning.
+- What gets reported: scalars, pointers to scalars, list elements and map entries. A list, map or struct given a value of the wrong shape (`hosts: "a,b"` into []string, `tls: true` into *TLSConfig) is not reported in this version. The field keeps its value, except that a nil pointer to a struct can come back pointing at an empty struct.
+- BindWithDefault and BindWithOptions log the same warnings. Only BindWithOptions takes ErrorOnMissing (BindWithDefault hardcodes it false). With it set, BindWithOptions logs nothing, binds the whole struct, then returns the *BindError.
+- BindStrict returns a non-BindError error (such as a missing key) as a real failure.
+- FieldError.Value is a copy for maps and lists, so it is safe to read after the bind.
+- TestConfyImpl.Bind uses the double's own simple binder. TestConfyImpl.BindStrict uses the real one over a deep copy of the test data.
+
+Behavior changes to know about (upgrading from v1.0.x):
+- BindWithDefault now binds duration strings such as "30s" and reads an int duration as seconds, as Bind always did.
+- Map scalar values go through the same converter as struct fields. An int into map[string]time.Duration is seconds; an int into map[string]string is "5".
+- Under BindWithDefault, an existing struct entry in a map now merges new keys instead of keeping the old value whole.
+- A pointer field gets a new pointer when its value binds. confy no longer writes through the old pointer, so a variable shared with it doesn't change.
+- A map keyed by a named string type (map[envName]int) binds instead of panicking. A map keyed by a non-string kind (map[int]int) reports each entry as an unsupported map key type and skips it.
 
 ### Auto-Discovery Implementation
 

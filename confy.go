@@ -10,6 +10,7 @@ import (
 	"maps"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1119,6 +1120,28 @@ func (c *ConfyImpl) Set(key string, value any) {
 
 // Bind binds configuration to a struct.
 func (c *ConfyImpl) Bind(key string, target any) error {
+	st, err := c.bind(key, target)
+	if err != nil {
+		return err
+	}
+
+	c.logBindProblems(st)
+
+	return nil
+}
+
+// BindStrict binds like Bind but returns a *BindError listing every value it
+// could not convert instead of logging them. Every other field is bound.
+func (c *ConfyImpl) BindStrict(key string, target any) error {
+	st, err := c.bind(key, target)
+	if err != nil {
+		return err
+	}
+
+	return st.err()
+}
+
+func (c *ConfyImpl) bind(key string, target any) (*bindState, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -1130,10 +1153,12 @@ func (c *ConfyImpl) Bind(key string, target any) error {
 	}
 
 	if data == nil {
-		return ErrConfigError(fmt.Sprintf("no configuration found for key '%s'", key), nil)
+		return nil, ErrConfigError(fmt.Sprintf("no configuration found for key '%s'", key), nil)
 	}
 
-	return c.bindValue(data, target)
+	st := &bindState{}
+
+	return st, c.bindValue(data, target, key, st)
 }
 
 // BindWithDefault binds with a default value.
@@ -1147,8 +1172,25 @@ func (c *ConfyImpl) BindWithDefault(key string, target any, defaultValue any) er
 	})
 }
 
-// BindWithOptions binds with flexible options.
+// BindWithOptions binds with flexible options. A value that cannot be converted
+// leaves its field alone and is logged as a warning. With ErrorOnMissing set, the
+// bind returns a *BindError listing every such value instead.
 func (c *ConfyImpl) BindWithOptions(key string, target any, options configcore.BindOptions) error {
+	st := &bindState{}
+	if err := c.bindWithOptions(key, target, options, st); err != nil {
+		return err
+	}
+
+	if options.ErrorOnMissing {
+		return st.err()
+	}
+
+	c.logBindProblems(st)
+
+	return nil
+}
+
+func (c *ConfyImpl) bindWithOptions(key string, target any, options configcore.BindOptions, st *bindState) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -1186,7 +1228,7 @@ func (c *ConfyImpl) BindWithOptions(key string, target any, options configcore.B
 		}
 	}
 
-	return c.bindValueWithOptions(data, target, options)
+	return c.bindValueWithOptions(data, target, options, key, st)
 }
 
 // =============================================================================
@@ -1721,7 +1763,7 @@ func (c *ConfyImpl) structToMap(v any, tagName string) (map[string]any, error) {
 	return result, nil
 }
 
-func (c *ConfyImpl) bindValue(value any, target any) error {
+func (c *ConfyImpl) bindValue(value any, target any, path string, st *bindState) error {
 	targetValue := reflect.ValueOf(target)
 	if targetValue.Kind() != reflect.Pointer {
 		return ErrConfigError("target must be a pointer", nil)
@@ -1749,13 +1791,13 @@ func (c *ConfyImpl) bindValue(value any, target any) error {
 
 	// Handle struct binding
 	if sourceValue.Kind() == reflect.Map {
-		return c.bindMapToStruct(sourceValue, targetElem)
+		return c.bindMapToStruct(sourceValue, targetElem, path, st)
 	}
 
 	return ErrConfigError("unsupported value type for binding", nil)
 }
 
-func (c *ConfyImpl) bindMapToStruct(mapValue reflect.Value, structValue reflect.Value) error {
+func (c *ConfyImpl) bindMapToStruct(mapValue reflect.Value, structValue reflect.Value, path string, st *bindState) error {
 	structType := structValue.Type()
 
 	// First apply struct tag defaults
@@ -1787,7 +1829,7 @@ func (c *ConfyImpl) bindMapToStruct(mapValue reflect.Value, structValue reflect.
 			continue
 		}
 
-		if err := c.setFieldValue(field, mapVal); err != nil {
+		if err := c.setFieldValue(field, mapVal, joinKey(path, fieldName), st); err != nil {
 			return err
 		}
 	}
@@ -1811,57 +1853,43 @@ func (c *ConfyImpl) getFieldName(field reflect.StructField) string {
 	return field.Name
 }
 
-func (c *ConfyImpl) setFieldValue(field reflect.Value, value reflect.Value) error {
-	if !value.IsValid() {
+func (c *ConfyImpl) setFieldValue(field reflect.Value, value reflect.Value, path string, st *bindState) error {
+	value, ok, null := unwrapValue(field, value)
+	if !ok {
+		if null {
+			bindNull(field)
+		}
+
 		return nil
 	}
 
 	valueInterface := value.Interface()
 
+	if handled, err := c.convertScalar(field, valueInterface); handled {
+		if err != nil {
+			st.add(path, valueInterface, field.Type(), err)
+		}
+
+		return nil
+	}
+
 	switch field.Kind() {
-	case reflect.String:
-		field.SetString(c.converter.ToString(valueInterface))
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		// Handle time.Duration specially since it's an int64
-		if field.Type() == reflect.TypeOf(time.Duration(0)) {
-			if durVal, err := c.converter.ToDuration(valueInterface); err == nil {
-				field.SetInt(int64(durVal))
-			}
-		} else {
-			if intVal, err := c.converter.ToInt64(valueInterface); err == nil {
-				field.SetInt(intVal)
-			}
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if uintVal, err := c.converter.ToUint64(valueInterface); err == nil {
-			field.SetUint(uintVal)
-		}
-	case reflect.Float32, reflect.Float64:
-		if floatVal, err := c.converter.ToFloat64(valueInterface); err == nil {
-			field.SetFloat(floatVal)
-		}
-	case reflect.Bool:
-		if boolVal, err := c.converter.ToBool(valueInterface); err == nil {
-			field.SetBool(boolVal)
-		}
 	case reflect.Slice:
 		if slice, ok := valueInterface.([]any); ok {
-			return c.setSliceValue(field, slice)
+			return c.setSliceValue(field, slice, path, st)
 		}
 	case reflect.Map:
 		if mapVal, ok := valueInterface.(map[string]any); ok {
-			return c.setMapValue(field, mapVal)
+			return c.setMapValue(field, mapVal, path, st)
 		}
 	case reflect.Struct:
 		if mapVal, ok := valueInterface.(map[string]any); ok {
-			return c.bindMapToStruct(reflect.ValueOf(mapVal), field)
+			return c.bindMapToStruct(reflect.ValueOf(mapVal), field, path, st)
 		}
 	case reflect.Pointer:
-		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
-		}
-
-		return c.setFieldValue(field.Elem(), value)
+		return c.setPointer(field, st, func(elem reflect.Value) error {
+			return c.setFieldValue(elem, value, path, st)
+		})
 	case reflect.Interface:
 		c.setInterfaceValue(field, valueInterface)
 	}
@@ -1885,12 +1913,20 @@ func (c *ConfyImpl) setInterfaceValue(field reflect.Value, value any) {
 	}
 }
 
-func (c *ConfyImpl) setSliceValue(field reflect.Value, slice []any) error {
+func (c *ConfyImpl) setSliceValue(field reflect.Value, slice []any, path string, st *bindState) error {
 	sliceValue := reflect.MakeSlice(field.Type(), len(slice), len(slice))
+	before := st.count()
+
 	for i, item := range slice {
-		if err := c.setFieldValue(sliceValue.Index(i), reflect.ValueOf(item)); err != nil {
+		if err := c.setFieldValue(sliceValue.Index(i), reflect.ValueOf(item), fmt.Sprintf("%s[%d]", path, i), st); err != nil {
 			return err
 		}
+	}
+
+	// A list of scalars with a bad element keeps its old value whole. A list of
+	// structs keeps every element, with the bad fields left at zero.
+	if isScalar(field.Type().Elem()) && st.count() > before {
+		return nil
 	}
 
 	field.Set(sliceValue)
@@ -1898,12 +1934,47 @@ func (c *ConfyImpl) setSliceValue(field reflect.Value, slice []any) error {
 	return nil
 }
 
-func (c *ConfyImpl) setMapValue(field reflect.Value, mapData map[string]any) error {
+// mapEntryAsIs returns value for a struct-valued map entry that is not a
+// mapping. It is usable only when it already is the map's element type, or one
+// pointer away from it (deep merge hands back a struct for a pointer entry).
+// Anything else is recorded as a problem, so SetMapIndex never panics on it. A
+// nil entry is skipped without a report, the way setFieldValue skips one.
+func mapEntryAsIs(value any, elemType reflect.Type, path string, st *bindState) (reflect.Value, bool) {
+	rv := reflect.ValueOf(value)
+	if !rv.IsValid() {
+		return reflect.Value{}, false
+	}
+
+	switch {
+	case rv.Type().AssignableTo(elemType):
+		return rv, true
+	case elemType.Kind() == reflect.Pointer && rv.Type().AssignableTo(elemType.Elem()):
+		ptr := reflect.New(elemType.Elem())
+		ptr.Elem().Set(rv)
+
+		return ptr, true
+	case rv.Kind() == reflect.Pointer && !rv.IsNil() && rv.Elem().Type().AssignableTo(elemType):
+		return rv.Elem(), true
+	}
+
+	st.add(path, value, elemType, fmt.Errorf("expected a mapping, got %T", value))
+
+	return reflect.Value{}, false
+}
+
+func (c *ConfyImpl) setMapValue(field reflect.Value, mapData map[string]any, path string, st *bindState) error {
 	mapValue := reflect.MakeMap(field.Type())
 	mapValueType := field.Type().Elem()
 
-	for key, value := range mapData {
-		keyValue := reflect.ValueOf(key)
+	for _, key := range slices.Sorted(maps.Keys(mapData)) {
+		value := mapData[key]
+
+		keyValue, err := mapKey(key, field.Type().Key())
+		if err != nil {
+			st.add(joinKey(path, key), value, field.Type(), err)
+
+			continue
+		}
 
 		// Convert value to the correct type for the map's value type
 		var convertedValue reflect.Value
@@ -1915,50 +1986,51 @@ func (c *ConfyImpl) setMapValue(field reflect.Value, mapData map[string]any) err
 
 			// If the value is a map[string]interface{}, bind it to the struct
 			if valueMap, ok := value.(map[string]any); ok {
-				if err := c.bindMapToStruct(reflect.ValueOf(valueMap), structInstance); err != nil {
+				if err := c.bindMapToStruct(reflect.ValueOf(valueMap), structInstance, joinKey(path, key), st); err != nil {
 					return fmt.Errorf("failed to bind map value for key '%s': %w", key, err)
 				}
 
 				convertedValue = structInstance
 			} else {
 				// Direct assignment if types match
-				convertedValue = reflect.ValueOf(value)
+				rv, ok := mapEntryAsIs(value, mapValueType, joinKey(path, key), st)
+				if !ok {
+					continue
+				}
+
+				convertedValue = rv
 			}
 		} else if mapValueType.Kind() == reflect.Pointer && mapValueType.Elem().Kind() == reflect.Struct {
 			// Handle pointer to struct
 			structInstance := reflect.New(mapValueType.Elem())
 
 			if valueMap, ok := value.(map[string]any); ok {
-				if err := c.bindMapToStruct(reflect.ValueOf(valueMap), structInstance.Elem()); err != nil {
+				if err := c.bindMapToStruct(reflect.ValueOf(valueMap), structInstance.Elem(), joinKey(path, key), st); err != nil {
 					return fmt.Errorf("failed to bind map value for key '%s': %w", key, err)
 				}
 
 				convertedValue = structInstance
 			} else {
-				convertedValue = reflect.ValueOf(value)
+				rv, ok := mapEntryAsIs(value, mapValueType, joinKey(path, key), st)
+				if !ok {
+					continue
+				}
+
+				convertedValue = rv
 			}
 		} else {
-			// For primitive types or interfaces, try direct conversion
-			convertedValue = reflect.ValueOf(value)
+			elem := reflect.New(mapValueType).Elem()
+			before := st.count()
 
-			// If types don't match, try to convert
-			if convertedValue.Type() != mapValueType {
-				// Try type conversion if possible
-				if convertedValue.Type().ConvertibleTo(mapValueType) {
-					convertedValue = convertedValue.Convert(mapValueType)
-				} else {
-					// If it's still a map[string]interface{} and we need a different type,
-					// we need to recursively bind it
-					if _, ok := value.(map[string]any); ok {
-						newValue := reflect.New(mapValueType).Elem()
-						if err := c.setFieldValue(newValue, convertedValue); err != nil {
-							return fmt.Errorf("failed to convert map value for key '%s': %w", key, err)
-						}
-
-						convertedValue = newValue
-					}
-				}
+			if err := c.setFieldValue(elem, reflect.ValueOf(value), joinKey(path, key), st); err != nil {
+				return fmt.Errorf("failed to convert map value for key '%s': %w", key, err)
 			}
+
+			if st.count() > before {
+				continue
+			}
+
+			convertedValue = elem
 		}
 
 		mapValue.SetMapIndex(keyValue, convertedValue)
@@ -1969,7 +2041,7 @@ func (c *ConfyImpl) setMapValue(field reflect.Value, mapData map[string]any) err
 	return nil
 }
 
-func (c *ConfyImpl) bindValueWithOptions(value any, target any, options configcore.BindOptions) error {
+func (c *ConfyImpl) bindValueWithOptions(value any, target any, options configcore.BindOptions, path string, st *bindState) error {
 	targetValue := reflect.ValueOf(target)
 	if targetValue.Kind() != reflect.Pointer {
 		return ErrConfigError("target must be a pointer", nil)
@@ -2015,13 +2087,13 @@ func (c *ConfyImpl) bindValueWithOptions(value any, target any, options configco
 	// Apply config file values (highest precedence)
 	sourceValue := reflect.ValueOf(value)
 	if sourceValue.Kind() == reflect.Map {
-		return c.bindMapToStructWithOptions(sourceValue, targetStruct, options)
+		return c.bindMapToStructWithOptions(sourceValue, targetStruct, options, path, st)
 	}
 
 	return ErrConfigError("unsupported value type for binding", nil)
 }
 
-func (c *ConfyImpl) bindMapToStructWithOptions(mapValue reflect.Value, structValue reflect.Value, options configcore.BindOptions) error {
+func (c *ConfyImpl) bindMapToStructWithOptions(mapValue reflect.Value, structValue reflect.Value, options configcore.BindOptions, path string, st *bindState) error {
 	structType := structValue.Type()
 
 	// Track required fields
@@ -2075,7 +2147,7 @@ func (c *ConfyImpl) bindMapToStructWithOptions(mapValue reflect.Value, structVal
 		}
 
 		// Set field value with deep merge support
-		if err := c.setFieldValueWithDeepMerge(field, mapVal, fieldType, options); err != nil {
+		if err := c.setFieldValueWithDeepMerge(field, mapVal, fieldType, options, joinKey(path, fieldName), st); err != nil {
 			return err
 		}
 	}
@@ -2283,84 +2355,56 @@ func (c *ConfyImpl) setDefaultValue(field reflect.Value, defaultTag string, fiel
 }
 
 // setFieldValueWithDeepMerge sets field with deep merge support for nested structs.
-func (c *ConfyImpl) setFieldValueWithDeepMerge(field reflect.Value, value reflect.Value, fieldType reflect.StructField, options configcore.BindOptions) error {
-	if !value.IsValid() {
+func (c *ConfyImpl) setFieldValueWithDeepMerge(field reflect.Value, value reflect.Value, fieldType reflect.StructField, options configcore.BindOptions, path string, st *bindState) error {
+	value, ok, null := unwrapValue(field, value)
+	if !ok {
+		if null {
+			bindNull(field)
+		}
+
 		return nil
 	}
 
 	valueInterface := value.Interface()
 
+	if handled, err := c.convertScalar(field, valueInterface); handled {
+		if err != nil {
+			st.add(path, valueInterface, field.Type(), err)
+		}
+
+		return nil
+	}
+
 	switch field.Kind() {
-	case reflect.String:
-		field.SetString(c.converter.ToString(valueInterface))
-
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if intVal, err := c.converter.ToInt64(valueInterface); err == nil {
-			field.SetInt(intVal)
-		} else if !options.ErrorOnMissing {
-			return nil
-		} else {
-			return err
-		}
-
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if uintVal, err := c.converter.ToUint64(valueInterface); err == nil {
-			field.SetUint(uintVal)
-		} else if !options.ErrorOnMissing {
-			return nil
-		} else {
-			return err
-		}
-
-	case reflect.Float32, reflect.Float64:
-		if floatVal, err := c.converter.ToFloat64(valueInterface); err == nil {
-			field.SetFloat(floatVal)
-		} else if !options.ErrorOnMissing {
-			return nil
-		} else {
-			return err
-		}
-
-	case reflect.Bool:
-		if boolVal, err := c.converter.ToBool(valueInterface); err == nil {
-			field.SetBool(boolVal)
-		} else if !options.ErrorOnMissing {
-			return nil
-		} else {
-			return err
-		}
-
 	case reflect.Slice:
 		if slice, ok := valueInterface.([]any); ok {
-			return c.setSliceValue(field, slice)
+			return c.setSliceValue(field, slice, path, st)
 		}
 
 	case reflect.Map:
 		if mapVal, ok := valueInterface.(map[string]any); ok {
 			if options.DeepMerge && !field.IsZero() {
 				// Deep merge with existing map
-				return c.mergeMapValue(field, mapVal, options)
+				return c.mergeMapValue(field, mapVal, options, path, st)
 			}
 
-			return c.setMapValue(field, mapVal)
+			return c.setMapValue(field, mapVal, path, st)
 		}
 
 	case reflect.Struct:
 		if mapVal, ok := valueInterface.(map[string]any); ok {
 			if options.DeepMerge && !field.IsZero() {
 				// Deep merge with existing struct
-				return c.mergeStructValue(field, mapVal, options)
+				return c.mergeStructValue(field, mapVal, options, path, st)
 			}
 
-			return c.bindMapToStructWithOptions(reflect.ValueOf(mapVal), field, options)
+			return c.bindMapToStructWithOptions(reflect.ValueOf(mapVal), field, options, path, st)
 		}
 
 	case reflect.Pointer:
-		if field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
-		}
-
-		return c.setFieldValueWithDeepMerge(field.Elem(), value, fieldType, options)
+		return c.setPointer(field, st, func(elem reflect.Value) error {
+			return c.setFieldValueWithDeepMerge(elem, value, fieldType, options, path, st)
+		})
 
 	case reflect.Interface:
 		c.setInterfaceValue(field, valueInterface)
@@ -2370,9 +2414,9 @@ func (c *ConfyImpl) setFieldValueWithDeepMerge(field reflect.Value, value reflec
 }
 
 // mergeMapValue deeply merges a map into an existing field.
-func (c *ConfyImpl) mergeMapValue(field reflect.Value, newData map[string]any, options configcore.BindOptions) error {
+func (c *ConfyImpl) mergeMapValue(field reflect.Value, newData map[string]any, options configcore.BindOptions, path string, st *bindState) error {
 	if field.IsNil() {
-		return c.setMapValue(field, newData)
+		return c.setMapValue(field, newData, path, st)
 	}
 
 	mapValueType := field.Type().Elem()
@@ -2386,47 +2430,99 @@ func (c *ConfyImpl) mergeMapValue(field reflect.Value, newData map[string]any, o
 	}
 
 	// Merge new values
-	for key, value := range newData {
-		keyValue := reflect.ValueOf(key)
+	for _, key := range slices.Sorted(maps.Keys(newData)) {
+		value := newData[key]
+
+		keyValue, err := mapKey(key, field.Type().Key())
+		if err != nil {
+			st.add(joinKey(path, key), value, field.Type(), err)
+
+			continue
+		}
 
 		// Convert value to correct type
 		var convertedValue reflect.Value
 
-		if mapValueType.Kind() == reflect.Struct {
+		switch {
+		case mapValueType.Kind() == reflect.Struct:
 			// Create new struct instance
 			structInstance := reflect.New(mapValueType).Elem()
 
-			if valueMap, ok := value.(map[string]any); ok {
-				// Check if we should deep merge with existing
-				if existingValue := field.MapIndex(keyValue); existingValue.IsValid() && options.DeepMerge {
-					// Deep merge existing struct with new data
-					if err := c.mergeStructValue(existingValue, valueMap, options); err != nil {
-						return err
-					}
-
-					merged.SetMapIndex(keyValue, existingValue)
-
+			valueMap, ok := value.(map[string]any)
+			if !ok {
+				rv, ok := mapEntryAsIs(value, mapValueType, joinKey(path, key), st)
+				if !ok {
 					continue
-				} else {
-					// Bind new struct
-					if err := c.bindMapToStructWithOptions(reflect.ValueOf(valueMap), structInstance, options); err != nil {
-						return fmt.Errorf("failed to bind map value for key '%v': %w", key, err)
-					}
-
-					convertedValue = structInstance
 				}
-			} else {
-				convertedValue = reflect.ValueOf(value)
-			}
-		} else {
-			convertedValue = reflect.ValueOf(value)
 
-			// Convert if types don't match
-			if convertedValue.Type() != mapValueType {
-				if convertedValue.Type().ConvertibleTo(mapValueType) {
-					convertedValue = convertedValue.Convert(mapValueType)
-				}
+				convertedValue = rv
+
+				break
 			}
+
+			// Check if we should deep merge with existing
+			if existingValue := field.MapIndex(keyValue); existingValue.IsValid() && options.DeepMerge {
+				// Deep merge existing struct with new data. A map element can't be
+				// set, so merge into an addressable copy and store that.
+				structInstance.Set(existingValue)
+
+				if err := c.mergeStructValue(structInstance, valueMap, options, joinKey(path, key), st); err != nil {
+					return err
+				}
+
+				merged.SetMapIndex(keyValue, structInstance)
+
+				continue
+			}
+
+			// Bind new struct
+			if err := c.bindMapToStructWithOptions(reflect.ValueOf(valueMap), structInstance, options, joinKey(path, key), st); err != nil {
+				return fmt.Errorf("failed to bind map value for key '%v': %w", key, err)
+			}
+
+			convertedValue = structInstance
+
+		case mapValueType.Kind() == reflect.Pointer && mapValueType.Elem().Kind() == reflect.Struct:
+			structInstance := reflect.New(mapValueType.Elem())
+
+			valueMap, ok := value.(map[string]any)
+			if !ok {
+				rv, ok := mapEntryAsIs(value, mapValueType, joinKey(path, key), st)
+				if !ok {
+					continue
+				}
+
+				convertedValue = rv
+
+				break
+			}
+
+			// Start from the existing entry so its fields survive the merge.
+			if existing := field.MapIndex(keyValue); existing.IsValid() && !existing.IsNil() && options.DeepMerge {
+				structInstance.Elem().Set(existing.Elem())
+
+				if err := c.mergeStructValue(structInstance.Elem(), valueMap, options, joinKey(path, key), st); err != nil {
+					return err
+				}
+			} else if err := c.bindMapToStructWithOptions(reflect.ValueOf(valueMap), structInstance.Elem(), options, joinKey(path, key), st); err != nil {
+				return fmt.Errorf("failed to bind map value for key '%v': %w", key, err)
+			}
+
+			convertedValue = structInstance
+
+		default:
+			elem := reflect.New(mapValueType).Elem()
+			before := st.count()
+
+			if err := c.setFieldValue(elem, reflect.ValueOf(value), joinKey(path, key), st); err != nil {
+				return fmt.Errorf("failed to convert map value for key '%s': %w", key, err)
+			}
+
+			if st.count() > before {
+				continue
+			}
+
+			convertedValue = elem
 		}
 
 		merged.SetMapIndex(keyValue, convertedValue)
@@ -2437,7 +2533,7 @@ func (c *ConfyImpl) mergeMapValue(field reflect.Value, newData map[string]any, o
 	return nil
 }
 
-func (c *ConfyImpl) mergeStructValue(structField reflect.Value, mapData map[string]any, options configcore.BindOptions) error {
+func (c *ConfyImpl) mergeStructValue(structField reflect.Value, mapData map[string]any, options configcore.BindOptions, path string, st *bindState) error {
 	// Extract current struct values to map
 	currentData := make(map[string]any)
 	structType := structField.Type()
@@ -2461,7 +2557,7 @@ func (c *ConfyImpl) mergeStructValue(structField reflect.Value, mapData map[stri
 
 	// Bind merged data back to struct
 	if mergedMap, ok := mergedData.(map[string]any); ok {
-		return c.bindMapToStructWithOptions(reflect.ValueOf(mergedMap), structField, options)
+		return c.bindMapToStructWithOptions(reflect.ValueOf(mergedMap), structField, options, path, st)
 	}
 
 	return nil

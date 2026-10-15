@@ -965,7 +965,8 @@ func (t *TestConfyImpl) Set(key string, value any) {
 // BINDING METHODS
 // =============================================================================
 
-// Bind binds configuration to a struct (simplified for testing).
+// Bind binds configuration to a struct (simplified for testing). It uses the
+// double's own simple binder, while BindStrict goes through the real one.
 func (t *TestConfyImpl) Bind(key string, target any) error {
 	return t.BindWithOptions(key, target, configcore.DefaultBindOptions())
 }
@@ -1013,6 +1014,25 @@ func (t *TestConfyImpl) BindWithOptions(key string, target any, options configco
 	}
 
 	return t.bindValue(data, target)
+}
+
+// BindStrict binds through the real binder over a deep copy of the test data,
+// returning a *BindError for values it could not convert.
+func (t *TestConfyImpl) BindStrict(key string, target any) error {
+	t.mu.RLock()
+	snapshot := t.deepCopyMap(t.data)
+	t.mu.RUnlock()
+
+	impl, ok := New().(*ConfyImpl)
+	if !ok {
+		return ErrConfigError("confy.New did not return a *ConfyImpl", nil)
+	}
+
+	for k, v := range snapshot {
+		impl.Set(k, v)
+	}
+
+	return impl.BindStrict(key, target)
 }
 
 // =============================================================================
